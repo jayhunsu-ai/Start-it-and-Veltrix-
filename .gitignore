@@ -1,0 +1,31 @@
+# Secrets — never committed, no exceptions
+.env
+.env.local
+.env.*.local
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+.next/
+out/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# OS/editor cruft
+.DS_Store
+.vscode/
+.idea/
+
+# Test/coverage
+coverage/
+
+# Runtime
+.cache/
+*.pid
