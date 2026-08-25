@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useToolCall } from "./lib/useToolCall.js";
+import { supabase, authConfigured } from "./lib/supabaseClient.js";
 import {
   Globe2, Gauge, Target, Layout, Rocket, Check, ChevronRight,
   Package, Palette, Users, Share2, FileBadge2, Wand2, Rows3,
   TrendingUp, Star, Instagram, MessageCircle, Music2, Link2, ArrowUpRight,
-  Loader2, AlertTriangle, RotateCcw, X, Image, Mail
+  Loader2, AlertTriangle, RotateCcw, X, Image, Mail, Eye, EyeOff
 } from "lucide-react";
 
 /* ---------- Segment-aware content ---------- */
@@ -54,22 +55,22 @@ const LANGUAGES = ["English", "Français", "Português", "العربية", "Kisw
 const TIERS_BY_SEGMENT = {
   new: [
     { id: "foundation", name: "Foundation", price: 22000, tagline: "Find your footing", features: ["Brand strategy development", "Business identity design", "Community access"] },
-    { id: "growth", name: "Growth", price: 38000, tagline: "Build your visibility", features: ["Everything in Foundation", "Content positioning", "Priority community support"], recommended: true },
+    { id: "growth", name: "Growth", price: 38000, tagline: "Build your visibility", features: ["Everything in Foundation", "Content positioning", "Priority community support"] },
     { id: "visibility", name: "Visibility", price: 65000, tagline: "Own the room", features: ["Everything in Growth", "Dedicated brand manager", "Public-facing positioning"] },
   ],
   scale: [
     { id: "foundation", name: "Foundation", price: 22000, tagline: "Tighten what you have", features: ["Brand & offer audit", "Identity refresh", "Community access"] },
-    { id: "growth", name: "Growth", price: 38000, tagline: "Grow with structure", features: ["Everything in Foundation", "Content & channel strategy", "Priority community support"], recommended: true },
+    { id: "growth", name: "Growth", price: 38000, tagline: "Grow with structure", features: ["Everything in Foundation", "Content & channel strategy", "Priority community support"] },
     { id: "visibility", name: "Visibility", price: 65000, tagline: "Scale with a team behind you", features: ["Everything in Growth", "Dedicated brand manager", "Multi-channel expansion plan"] },
   ],
   influencer: [
     { id: "foundation", name: "Foundation", price: 22000, tagline: "Define your brand", features: ["Personal brand strategy", "Visual identity & handle kit", "Community access"] },
-    { id: "growth", name: "Growth", price: 38000, tagline: "Grow your audience", features: ["Everything in Foundation", "Content pillar & calendar", "Priority community support"], recommended: true },
+    { id: "growth", name: "Growth", price: 38000, tagline: "Grow your audience", features: ["Everything in Foundation", "Content pillar & calendar", "Priority community support"] },
     { id: "visibility", name: "Visibility", price: 65000, tagline: "Brand-deal ready", features: ["Everything in Growth", "Dedicated brand manager", "Media kit & rate card"] },
   ],
   learn: [
     { id: "foundation", name: "Foundation", price: 0, tagline: "Start the track", features: ["Full skill track access", "Portfolio brief templates", "Community access"] },
-    { id: "growth", name: "Growth", price: 12000, tagline: "Get certified", features: ["Everything in Foundation", "1:1 mentor review", "Certification on completion"], recommended: true },
+    { id: "growth", name: "Growth", price: 12000, tagline: "Get certified", features: ["Everything in Foundation", "1:1 mentor review", "Certification on completion"] },
     { id: "visibility", name: "Visibility", price: 20000, tagline: "Get matched", features: ["Everything in Growth", "Priority marketplace placement", "First client match guaranteed"] },
   ],
 };
@@ -189,6 +190,11 @@ function slugify(s) {
   return (s || "yourbrand").toLowerCase().trim().replace(/[^a-z0-9]+/g, "").slice(0, 18) || "yourbrand";
 }
 
+function formatTrack(v) {
+  if (!v) return "";
+  return v.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 /* ---------- Shared UI ---------- */
 
 function StitchRail({ stepIndex, onJump }) {
@@ -254,9 +260,16 @@ function BackLink({ onClick }) {
 
 /* ---------- Main ---------- */
 
-export default function StartItDemo({ initialSegment, onExit } = {}) {
-  const [step, setStep] = useState(0);
+export default function StartItDemo({ initialSegment, initialMode, onExit } = {}) {
+  const [step, setStep] = useState(initialMode === "login" ? 1 : 0);
+  const [authMode, setAuthMode] = useState(initialMode === "login" ? "login" : "signup");
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [authUserId, setAuthUserId] = useState(null);
+  const [authStatus, setAuthStatus] = useState("idle"); // idle | loading | done | error
+  const [authError, setAuthError] = useState(null);
   const [businessIdea, setBusinessIdea] = useState("");
   const [segment, setSegment] = useState(initialSegment || null);
   const [lang, setLang] = useState(null);
@@ -275,6 +288,73 @@ export default function StartItDemo({ initialSegment, onExit } = {}) {
 
   const goNext = () => setStep((s) => Math.min(s + 1, STEPS.length - 1));
   const goBack = () => setStep((s) => Math.max(s - 1, 0));
+
+  // Real Supabase Auth — replaces the old "just store a name in local
+  // state" placeholder. This is what makes every downstream user_id
+  // (extras_orders, future_letters, brand_snapshots) a real foreign
+  // key into profiles/auth.users instead of a value that was always
+  // going to fail on insert.
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+  const handleSignUp = async () => {
+    if (!authConfigured) {
+      setAuthError("Accounts aren't configured on this deployment yet.");
+      setAuthStatus("error");
+      return;
+    }
+    if (!name.trim()) { setAuthError("Your name is required."); setAuthStatus("error"); return; }
+    if (!emailValid) { setAuthError("That doesn't look like a full email address."); setAuthStatus("error"); return; }
+    if (password.length < 8) { setAuthError("Password needs to be at least 8 characters."); setAuthStatus("error"); return; }
+
+    setAuthStatus("loading");
+    setAuthError(null);
+    const { data, error } = await supabase.auth.signUp({ email: email.trim(), password });
+    if (error) {
+      setAuthError(error.message);
+      setAuthStatus("error");
+      return;
+    }
+    const user = data.user;
+    if (!data.session) {
+      // Email confirmation is on for this project — no session yet.
+      setAuthStatus("error");
+      setAuthError("Account created — check your email to confirm it, then log in.");
+      return;
+    }
+    setAuthUserId(user.id);
+    await supabase.from("profiles").upsert({ id: user.id, display_name: name.trim() });
+    setAuthStatus("done");
+    goNext();
+  };
+
+  const handleLogIn = async () => {
+    if (!authConfigured) {
+      setAuthError("Accounts aren't configured on this deployment yet.");
+      setAuthStatus("error");
+      return;
+    }
+    if (!emailValid || !password) { setAuthError("Enter your email and password."); setAuthStatus("error"); return; }
+
+    setAuthStatus("loading");
+    setAuthError(null);
+    const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    if (error) {
+      setAuthError(error.message);
+      setAuthStatus("error");
+      return;
+    }
+    setAuthUserId(data.user.id);
+    const { data: profile } = await supabase.from("profiles").select("*").eq("id", data.user.id).single();
+    setAuthStatus("done");
+    if (profile) {
+      setName(profile.display_name || "");
+      if (profile.segment) setSegment(profile.segment);
+      if (profile.tier) setTier(profile.tier);
+      setStep(profile.segment ? 9 : 2); // known user -> dashboard, else finish onboarding
+    } else {
+      setStep(2);
+    }
+  };
 
   const inputFor = (toolId) => toolInputs[toolId] || "";
   const setInputFor = (toolId, val) => setToolInputs((prev) => ({ ...prev, [toolId]: val }));
@@ -323,10 +403,19 @@ export default function StartItDemo({ initialSegment, onExit } = {}) {
     },
   });
 
+  // Tool "a" only produces a name+tagline for the new/influencer
+  // segments (name generator). For scale/learn it's a different tool
+  // entirely (brand-health-check / skills-match) with no such fields —
+  // fall back to the business idea instead of rendering an empty "".
+  const brandName = (seg === "new" || seg === "influencer") && generated.result?.names?.[0]
+    ? generated.result.names[0]
+    : businessIdea || "Your brand";
+  const brandTagline = (seg === "new" || seg === "influencer") ? generated.result?.tagline || null : null;
+
   const websitePreview = useToolCall(TOOL_ENDPOINT[seg].d.path, {
     demoFn: () => ({
-      headline: `${generated.result?.names?.[0] || "Your Brand"} — built for the people who need it`,
-      subheadline: generated.result?.tagline || "A one-page site, ready to preview.",
+      headline: `${brandName} — built for the people who need it`,
+      subheadline: brandTagline || "A one-page site, ready to preview.",
       sections: [
         { title: "What we do", body: "A short, clear line about the offer." },
         { title: "Why it works", body: "The one thing that makes this trustworthy." },
@@ -358,11 +447,19 @@ export default function StartItDemo({ initialSegment, onExit } = {}) {
     if (!moodInput.trim()) return;
     moodBoard.run({ brandDescription: moodInput.trim() });
   };
+  // Keep the profile row's segment/tier in sync as the person moves
+  // through onboarding, so a later login lands them back where they
+  // left off (see handleLogIn's dashboard-vs-onboarding branch above).
+  useEffect(() => {
+    if (!authUserId || !authConfigured) return;
+    supabase.from("profiles").update({ segment, tier }).eq("id", authUserId);
+  }, [authUserId, segment, tier]);
+
   const runFutureLetter = () => {
-    if (!letterText.trim() || !letterDate) return;
+    if (!letterText.trim() || !letterDate || !authUserId) return;
     const idempotencyKey = `future-letter-${slugify(name)}-${letterDate}`;
     futureLetter.run(
-      { userId: name || "demo-user", letterText: letterText.trim(), deliverAt: new Date(letterDate).toISOString() },
+      { userId: authUserId, letterText: letterText.trim(), deliverAt: new Date(letterDate).toISOString() },
       { "Idempotency-Key": idempotencyKey }
     );
   };
@@ -426,7 +523,7 @@ export default function StartItDemo({ initialSegment, onExit } = {}) {
 
   const postNow = async () => {
     const targetIds = connected.length ? connected : channels.slice(0, 1).map((c) => c.id);
-    const content = `${generated.result?.names?.[0] || "Your brand"} is officially live 🎉 "${generated.result?.tagline || ""}" — link in bio.`;
+    const content = `${brandName} is officially live 🎉${brandTagline ? ` "${brandTagline}"` : ""} — link in bio.`;
 
     if (!apiBase) {
       // Demo mode — no backend configured, just flip the local flag.
@@ -444,7 +541,7 @@ export default function StartItDemo({ initialSegment, onExit } = {}) {
             "Content-Type": "application/json",
             "Idempotency-Key": `post-${channelId}-${liveSlug}`,
           },
-          body: JSON.stringify({ channelId, content, userId: name || "anonymous" }),
+          body: JSON.stringify({ channelId, content, userId: authUserId }),
         });
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
@@ -460,7 +557,7 @@ export default function StartItDemo({ initialSegment, onExit } = {}) {
   };
 
   const displayName = name || "there";
-  const liveSlug = slugify(businessIdea || generated.result?.names?.[0]);
+  const liveSlug = slugify(businessIdea || brandName);
 
   return (
     <div className="min-h-screen w-full bg-[#F1ECE0] px-6 py-10">
@@ -517,20 +614,59 @@ export default function StartItDemo({ initialSegment, onExit } = {}) {
             {step === 1 && (
               <div className="flex h-full flex-col justify-between">
                 <div>
-                  <Header eyebrow="Step 1" title="Create your account" sub="It takes less than a minute to start." />
+                  <Header
+                    eyebrow="Step 1"
+                    title={authMode === "login" ? "Log in" : "Create your account"}
+                    sub={authMode === "login" ? "Pick up where you left off." : "It takes less than a minute to start."}
+                  />
                   <div className="space-y-3">
+                    {authMode === "signup" && (
+                      <div>
+                        <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-[#726C5C]">Full name</label>
+                        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Amina Yusuf" className="w-full rounded-xl border border-[#D9D4C8] bg-white px-3.5 py-2.5 text-sm text-[#12182B] outline-none focus:border-[#12182B]" />
+                      </div>
+                    )}
                     <div>
-                      <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-[#726C5C]">Full name</label>
-                      <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Amina Yusuf" className="w-full rounded-xl border border-[#D9D4C8] bg-white px-3.5 py-2.5 text-sm text-[#12182B] outline-none focus:border-[#12182B]" />
+                      <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-[#726C5C]">Email</label>
+                      <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="amina@example.com" className="w-full rounded-xl border border-[#D9D4C8] bg-white px-3.5 py-2.5 text-sm text-[#12182B] outline-none focus:border-[#12182B]" />
                     </div>
                     <div>
-                      <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-[#726C5C]">One line about what you're building</label>
-                      <input value={businessIdea} onChange={(e) => setBusinessIdea(e.target.value)} placeholder="A laundry pickup service" className="w-full rounded-xl border border-[#D9D4C8] bg-white px-3.5 py-2.5 text-sm text-[#12182B] outline-none focus:border-[#12182B]" />
+                      <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-[#726C5C]">Password</label>
+                      <div className="relative">
+                        <input
+                          type={showPassword ? "text" : "password"}
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          placeholder={authMode === "signup" ? "At least 8 characters" : "••••••••"}
+                          className="w-full rounded-xl border border-[#D9D4C8] bg-white px-3.5 py-2.5 pr-10 text-sm text-[#12182B] outline-none focus:border-[#12182B]"
+                        />
+                        <button type="button" onClick={() => setShowPassword((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9A9384]">
+                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
                     </div>
+                    {authMode === "signup" && (
+                      <div>
+                        <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-[#726C5C]">One line about what you're building</label>
+                        <input value={businessIdea} onChange={(e) => setBusinessIdea(e.target.value)} placeholder="A laundry pickup service" className="w-full rounded-xl border border-[#D9D4C8] bg-white px-3.5 py-2.5 text-sm text-[#12182B] outline-none focus:border-[#12182B]" />
+                      </div>
+                    )}
+                    {authStatus === "error" && authError && (
+                      <p className="flex items-center gap-1.5 text-[12px] text-red-700"><AlertTriangle className="h-3 w-3 shrink-0" />{authError}</p>
+                    )}
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <PrimaryButton onClick={goNext}>Create account <ChevronRight className="h-4 w-4" /></PrimaryButton>
+                  <PrimaryButton onClick={authMode === "signup" ? handleSignUp : handleLogIn} disabled={authStatus === "loading"}>
+                    {authStatus === "loading" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                    {authMode === "signup" ? "Create account" : "Log in"} <ChevronRight className="h-4 w-4" />
+                  </PrimaryButton>
+                  <button
+                    onClick={() => { setAuthMode((m) => (m === "signup" ? "login" : "signup")); setAuthStatus("idle"); setAuthError(null); }}
+                    className="w-full text-center text-[12px] text-[#726C5C] underline underline-offset-2"
+                  >
+                    {authMode === "signup" ? "Already have an account? Log in" : "New here? Create an account"}
+                  </button>
                   <BackLink onClick={goBack} />
                 </div>
               </div>
@@ -624,8 +760,37 @@ export default function StartItDemo({ initialSegment, onExit } = {}) {
                                   )}
                                   {generated.status === "done" && generated.result && (
                                     <div>
-                                      <p className="font-serif text-lg font-bold text-[#12182B]">{generated.result.names?.[0]}</p>
-                                      <p className="text-[13px] italic text-[#5C5747]">"{generated.result.tagline}"</p>
+                                      {/* Tool "a" is a different tool per segment (name generator for
+                                          new/influencer, brand-health-check for scale, skills-match for
+                                          learn) and each returns a different JSON shape — rendering them
+                                          all through the name/tagline layout left scale and learn showing
+                                          empty quote marks, since their results have no .names/.tagline. */}
+                                      {seg === "scale" ? (
+                                        <div>
+                                          <p className="font-serif text-lg font-bold text-[#12182B]">{generated.result.clarity_score}/100 clarity</p>
+                                          <p className="text-[13px] text-[#5C5747]">{generated.result.first_impression}</p>
+                                          {generated.result.fixes?.length > 0 && (
+                                            <ul className="mt-2 space-y-1">
+                                              {generated.result.fixes.map((f, i) => (
+                                                <li key={i} className="flex gap-1.5 text-[12px] text-[#5C5747]"><Check className="mt-0.5 h-3 w-3 shrink-0 text-emerald-700" />{f}</li>
+                                              ))}
+                                            </ul>
+                                          )}
+                                        </div>
+                                      ) : seg === "learn" ? (
+                                        <div>
+                                          <p className="font-serif text-lg font-bold text-[#12182B]">{formatTrack(generated.result.recommended_track)}</p>
+                                          <p className="text-[13px] text-[#5C5747]">{generated.result.why}</p>
+                                          {generated.result.runner_up && (
+                                            <p className="mt-1 text-[12px] text-[#9A9384]">Runner-up: {formatTrack(generated.result.runner_up)}</p>
+                                          )}
+                                        </div>
+                                      ) : (
+                                        <div>
+                                          <p className="font-serif text-lg font-bold text-[#12182B]">{generated.result.names?.[0]}</p>
+                                          <p className="text-[13px] italic text-[#5C5747]">"{generated.result.tagline}"</p>
+                                        </div>
+                                      )}
                                     </div>
                                   )}
                                 </div>
@@ -728,7 +893,6 @@ export default function StartItDemo({ initialSegment, onExit } = {}) {
                   <div className="space-y-2.5">
                     {tiers.map((t) => (
                       <button key={t.id} onClick={() => setTier(t.id)} className={`relative w-full rounded-xl border-2 p-3.5 text-left transition ${tier === t.id ? "border-[#1B2338] bg-white" : "border-[#E4DFD1] bg-white/60"}`}>
-                        {t.recommended && <span className="absolute -top-2 right-3 rounded-full bg-[#12182B] px-2 py-0.5 font-mono text-[9px] uppercase tracking-wide text-[#6BD3D8]">Most chosen</span>}
                         <div className="flex items-center justify-between">
                           <p className="font-serif text-base font-bold text-[#12182B]">{t.name}</p>
                           <p className="font-mono text-sm font-semibold text-[#12182B]">{naira(t.price)}<span className="text-[10px] font-normal text-[#9A9384]">/mo</span></p>
@@ -849,8 +1013,8 @@ export default function StartItDemo({ initialSegment, onExit } = {}) {
                   <div className="rounded-xl border border-[#E4DFD1] bg-white p-3.5">
                     <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#726C5C]">First post, ready</p>
                     <div className="rounded-lg bg-[#F7F3EC] p-2.5">
-                      <p className="font-serif text-[13px] font-bold text-[#12182B]">{generated.result?.names?.[0] || "Your brand"} is officially live 🎉</p>
-                      <p className="mt-0.5 text-[12px] text-[#5C5747]">"{generated.result?.tagline || ""}" — link in bio.</p>
+                      <p className="font-serif text-[13px] font-bold text-[#12182B]">{brandName} is officially live 🎉</p>
+                      <p className="mt-0.5 text-[12px] text-[#5C5747]">{brandTagline ? `"${brandTagline}" — ` : ""}link in bio.</p>
                     </div>
                     {postStatus === "error" && (
                       <p className="mt-2 flex items-center gap-1.5 text-[12px] text-red-700"><AlertTriangle className="h-3 w-3" />{postError}</p>

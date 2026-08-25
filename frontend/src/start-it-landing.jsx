@@ -332,7 +332,7 @@ function ToolCard({ tool }) {
 }
 
 /* ---------- Contact ---------- */
-function ContactRow({ email }) {
+function ContactRow({ email, label }) {
   const [state, setState] = useState("idle"); // idle | copied | unsupported
   const hiddenInputRef = useRef(null);
 
@@ -380,7 +380,7 @@ function ContactRow({ email }) {
       <input ref={hiddenInputRef} type="text" readOnly className="sr-only" aria-hidden="true" tabIndex={-1} />
       <a href={`mailto:${email}`} className="flex items-center gap-3 text-[14px] hover:underline" style={{ color: CHALK }}>
         <Mail className="h-4 w-4" style={{ color: GOLD }} />
-        {email}
+        {label}
       </a>
       <button
         onClick={copy}
@@ -388,7 +388,7 @@ function ContactRow({ email }) {
         style={{ borderColor: state === "copied" ? GOLD : `${CHALK}25`, color: state === "copied" ? GOLD : `${CHALK}80` }}
       >
         {state === "copied" ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-        {state === "copied" ? "copied" : state === "unsupported" ? "long-press to copy" : "copy"}
+        {state === "copied" ? "copied" : state === "unsupported" ? "long-press to copy" : "copy address"}
       </button>
     </div>
   );
@@ -459,7 +459,7 @@ function InvestorsPanel() {
   );
 }
 
-export default function StartItLanding({ onStart } = {}) {
+export default function StartItLanding({ onStart, onLogIn } = {}) {
   const [hovered, setHovered] = useState(null);
   const [selectedPath, setSelectedPath] = useState(null);
   const [mounted, setMounted] = useState(false);
@@ -504,13 +504,18 @@ export default function StartItLanding({ onStart } = {}) {
             <button onClick={() => scrollTo(marketplaceRef)} className="hover:text-white transition-colors">Marketplace</button>
             <button onClick={() => scrollTo(investorsRef)} className="hover:text-white transition-colors">Investors</button>
           </nav>
-          <button
-            onClick={() => onStart?.(selectedPath)}
-            className="text-sm font-semibold uppercase tracking-wide rounded-full px-4 py-1.5 transition-colors duration-300"
-            style={{ background: GOLD, color: DENIM }}
-          >
-            Start free
-          </button>
+          <div className="flex items-center gap-4">
+            <button onClick={() => onLogIn?.()} className="hidden sm:inline text-sm transition-colors hover:text-white" style={{ color: `${CHALK}99` }}>
+              Log in
+            </button>
+            <button
+              onClick={() => onStart?.(selectedPath)}
+              className="text-sm font-semibold uppercase tracking-wide rounded-full px-4 py-1.5 transition-colors duration-300"
+              style={{ background: GOLD, color: DENIM }}
+            >
+              Start free
+            </button>
+          </div>
         </header>
 
         {/* Hero — hook fast, no throat-clearing */}
@@ -612,7 +617,7 @@ export default function StartItLanding({ onStart } = {}) {
                 Every brand manager, designer, and SMM on Start-It trained here first. <span style={{ color: CHALK }}>Learn a skill, get matched to real clients.</span>
               </p>
             </div>
-            <button className="flex items-center gap-1.5 text-[13px] font-semibold uppercase tracking-wide whitespace-nowrap group" style={{ color: GOLD }}>
+            <button onClick={() => onStart?.("learn")} className="flex items-center gap-1.5 text-[13px] font-semibold uppercase tracking-wide whitespace-nowrap group" style={{ color: GOLD }}>
               See the marketplace
               <ChevronRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-0.5" />
             </button>
@@ -632,8 +637,8 @@ export default function StartItLanding({ onStart } = {}) {
             Questions. Partnerships. Press.
           </h2>
           <div className="grid sm:grid-cols-2 gap-3 max-w-2xl">
-            <ContactRow email="ebunhunsu1@gmail.com" />
-            <ContactRow email="isabelgarpiya@gmail.com" />
+            <ContactRow email="ebunhunsu1@gmail.com" label="General & partnerships" />
+            <ContactRow email="isabelgarpiya@gmail.com" label="Press & media" />
           </div>
         </section>
 
