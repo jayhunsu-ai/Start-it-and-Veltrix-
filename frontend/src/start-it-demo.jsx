@@ -4,7 +4,7 @@ import {
   Globe2, Gauge, Target, Layout, Rocket, Check, ChevronRight,
   Package, Palette, Users, Share2, FileBadge2, Wand2, Rows3,
   TrendingUp, Star, Instagram, MessageCircle, Music2, Link2, ArrowUpRight,
-  Loader2, AlertTriangle, RotateCcw, X
+  Loader2, AlertTriangle, RotateCcw, X, Image, Mail
 } from "lucide-react";
 
 /* ---------- Segment-aware content ---------- */
@@ -335,6 +335,37 @@ export default function StartItDemo({ initialSegment, onExit } = {}) {
     }),
   });
 
+
+  // Tools 6 & 8 — Identity Mood Board and FutureMe Letters. These live
+  // on the dashboard hub rather than the free-tools step: mood board
+  // is a paid-tier unlock (see TIER_UNLOCKS), and future letters are
+  // an ongoing-account action, not a pre-signup free tool.
+  const moodBoard = useToolCall("/api/tools/mood-board", {
+    demoFn: () => ({
+      image_url: null,
+      style_notes: "Demo mode — connect a backend to generate a real mood board image.",
+    }),
+  });
+  const futureLetter = useToolCall("/api/tools/future-letter", {
+    demoFn: () => ({ id: "demo", deliver_at: letterDate }),
+  });
+  const [activeHubTool, setActiveHubTool] = useState(null); // null | "mood" | "letter"
+  const [moodInput, setMoodInput] = useState("");
+  const [letterText, setLetterText] = useState("");
+  const [letterDate, setLetterDate] = useState("");
+
+  const runMoodBoard = () => {
+    if (!moodInput.trim()) return;
+    moodBoard.run({ brandDescription: moodInput.trim() });
+  };
+  const runFutureLetter = () => {
+    if (!letterText.trim() || !letterDate) return;
+    const idempotencyKey = `future-letter-${slugify(name)}-${letterDate}`;
+    futureLetter.run(
+      { userId: name || "demo-user", letterText: letterText.trim(), deliverAt: new Date(letterDate).toISOString() },
+      { "Idempotency-Key": idempotencyKey }
+    );
+  };
 
   const monthlyTotal = useMemo(() => {
     const t = tiers.find((t) => t.id === tier);
@@ -868,20 +899,78 @@ export default function StartItDemo({ initialSegment, onExit } = {}) {
                   <p className="mb-2 mt-4 text-[11px] font-semibold uppercase tracking-wide text-[#726C5C]">Your ongoing hub</p>
                   <div className="grid grid-cols-2 gap-2">
                     {[
-                      { label: "Message brand manager", icon: Users },
-                      { label: "Post again", icon: Share2 },
-                      { label: "Add an extra", icon: Package },
-                      { label: "View performance", icon: TrendingUp },
+                      { id: "mood", label: "Identity mood board", icon: Image, onClick: () => setActiveHubTool((t) => (t === "mood" ? null : "mood")) },
+                      { id: "post", label: "Post again", icon: Share2, onClick: () => { setActiveHubTool(null); setPosted(false); setStep(8); } },
+                      { id: "letter", label: "Write a future letter", icon: Mail, onClick: () => setActiveHubTool((t) => (t === "letter" ? null : "letter")) },
+                      { id: "extra", label: "Add an extra", icon: Package, onClick: () => { setActiveHubTool(null); setStep(7); } },
                     ].map((tile) => {
                       const Icon = tile.icon;
+                      const active = activeHubTool === tile.id;
                       return (
-                        <div key={tile.label} className="flex flex-col gap-1.5 rounded-xl border border-[#E4DFD1] bg-white p-3">
+                        <button key={tile.id} onClick={tile.onClick} className={`flex flex-col gap-1.5 rounded-xl border p-3 text-left transition ${active ? "border-[#159AAC] bg-[#F7F3EC]" : "border-[#E4DFD1] bg-white"}`}>
                           <Icon className="h-4 w-4 text-[#1CB5C9]" />
                           <span className="text-[12px] font-medium leading-4 text-[#453F2E]">{tile.label}</span>
-                        </div>
+                        </button>
                       );
                     })}
                   </div>
+
+                  {activeHubTool === "mood" && (
+                    <div className="mt-3 rounded-xl border border-dashed border-[#D9D4C8] bg-[#F7F3EC] p-3.5">
+                      <label className="mb-1 block text-[11px] uppercase tracking-wide text-[#726C5C]">Describe the brand direction</label>
+                      <input
+                        value={moodInput}
+                        onChange={(e) => setMoodInput(e.target.value)}
+                        placeholder="Warm, earthy, handmade feel"
+                        className="mb-2 w-full rounded-lg border border-[#D9D4C8] bg-white px-3 py-2 text-[13px] text-[#12182B] outline-none focus:border-[#12182B]"
+                      />
+                      <button onClick={runMoodBoard} disabled={!moodInput.trim() || moodBoard.status === "loading"} className="mb-3 flex items-center gap-1.5 text-[12px] font-semibold text-[#1CB5C9] disabled:opacity-50">
+                        {moodBoard.status === "loading" && <Loader2 className="h-3 w-3 animate-spin" />}
+                        {moodBoard.status === "done" ? "Regenerate" : "Generate"}
+                      </button>
+                      {moodBoard.status === "error" && (
+                        <p className="flex items-center gap-1.5 text-[12px] text-red-700"><AlertTriangle className="h-3 w-3" />{moodBoard.error?.message}</p>
+                      )}
+                      {moodBoard.status === "done" && moodBoard.result && (
+                        <div>
+                          {moodBoard.result.image_url && (
+                            <img src={moodBoard.result.image_url} alt="Mood board" className="mb-2 w-full rounded-lg border border-[#D9D4C8]" />
+                          )}
+                          {moodBoard.result.style_notes && <p className="text-[12px] text-[#5C5747]">{moodBoard.result.style_notes}</p>}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {activeHubTool === "letter" && (
+                    <div className="mt-3 rounded-xl border border-dashed border-[#D9D4C8] bg-[#F7F3EC] p-3.5">
+                      <label className="mb-1 block text-[11px] uppercase tracking-wide text-[#726C5C]">A note to your future self</label>
+                      <textarea
+                        value={letterText}
+                        onChange={(e) => setLetterText(e.target.value)}
+                        placeholder="Dear future me..."
+                        rows={3}
+                        className="mb-2 w-full rounded-lg border border-[#D9D4C8] bg-white px-3 py-2 text-[13px] text-[#12182B] outline-none focus:border-[#12182B]"
+                      />
+                      <label className="mb-1 block text-[11px] uppercase tracking-wide text-[#726C5C]">Deliver on</label>
+                      <input
+                        type="date"
+                        value={letterDate}
+                        onChange={(e) => setLetterDate(e.target.value)}
+                        className="mb-2 w-full rounded-lg border border-[#D9D4C8] bg-white px-3 py-2 text-[13px] text-[#12182B] outline-none focus:border-[#12182B]"
+                      />
+                      <button onClick={runFutureLetter} disabled={!letterText.trim() || !letterDate || futureLetter.status === "loading"} className="mb-3 flex items-center gap-1.5 text-[12px] font-semibold text-[#1CB5C9] disabled:opacity-50">
+                        {futureLetter.status === "loading" && <Loader2 className="h-3 w-3 animate-spin" />}
+                        {futureLetter.status === "done" ? "Schedule another" : "Schedule letter"}
+                      </button>
+                      {futureLetter.status === "error" && (
+                        <p className="flex items-center gap-1.5 text-[12px] text-red-700"><AlertTriangle className="h-3 w-3" />{futureLetter.error?.message}</p>
+                      )}
+                      {futureLetter.status === "done" && futureLetter.result && (
+                        <p className="flex items-center gap-1.5 text-[12px] text-emerald-700"><Check className="h-3 w-3" />Scheduled for {letterDate}.</p>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2">

@@ -25,7 +25,7 @@ export function useToolCall(endpoint, { demoFn } = {}) {
   const [error, setError] = useState(null);
 
   const run = useCallback(
-    async (payload) => {
+    async (payload, extraHeaders) => {
       setStatus("loading");
       setError(null);
 
@@ -52,7 +52,7 @@ export function useToolCall(endpoint, { demoFn } = {}) {
       try {
         const res = await fetch(`${apiBase}${endpoint}`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...(extraHeaders || {}) },
           body: JSON.stringify(payload),
           signal: controller.signal,
         });
