@@ -1,0 +1,23 @@
+name: Keep Render App Alive
+
+on:
+  schedule:
+    # Runs every 14 minutes (GitHub cron is UTC, best-effort timing)
+    - cron: '*/14 * * * *'
+  workflow_dispatch: {}  # lets you trigger it manually from the Actions tab
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping health endpoint
+        run: |
+          URL="https://start-it-demo.onrender.com/api/health"
+          timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          status=$(curl -s -o /tmp/body -w "%{http_code}" --max-time 20 "$URL")
+          body=$(cat /tmp/body)
+          echo "[$timestamp] Status: $status"
+          echo "Response: $body"
+          if [ "$status" != "200" ]; then
+            echo "::warning::Health check failed with status $status"
+          fi
