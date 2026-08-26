@@ -3,7 +3,8 @@ import {
   Box, Pencil, X, ChevronRight, RotateCcw, Layers3, Sparkles,
   DraftingCompass
 } from "lucide-react";
-import MaterialEngine3D from "./MaterialEngine3D.jsx";
+import ResponsiveBusinessEngine from "./ResponsiveBusinessEngine.jsx";
+import "./phase3-ui.css";
 
 const MATERIALS = [
   { id: "denim", label: "Denim", note: "Workshop" },
@@ -83,7 +84,7 @@ export default function WorkshopLab({ mode, onModeChange }) {
                 </div>
 
                 <div className="engine-stage engine-stage--3d">
-                  <MaterialEngine3D
+                  <ResponsiveBusinessEngine
                     material={material.id}
                     exploded={exploded}
                     onPartSelect={(part) => setSelected(part.id)}
