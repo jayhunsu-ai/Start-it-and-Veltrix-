@@ -1,0 +1,401 @@
+
+/* ============================================================
+   START-IT PHASE 02 — Workshop Lab / Blueprint / Pencil
+   Presentation-only. Existing product flow remains untouched.
+   ============================================================ */
+
+.startit-workshop-app[data-material="blueprint"] {
+  --startit-denim: #071a2d;
+  --startit-chalk: #cfe7ff;
+  --startit-gold: #7fc8ff;
+  --startit-gold-bright: #b4e0ff;
+  --startit-copper: #72b8df;
+}
+.startit-workshop-app[data-material="paper"],
+.startit-workshop-app[data-material="pencil"] {
+  --startit-denim: #e7dfce;
+  --startit-chalk: #29251f;
+  --startit-muted: #665f55;
+  --startit-gold: #9a6d22;
+  --startit-gold-bright: #bd8d36;
+  --startit-copper: #9a4e2d;
+}
+.startit-workshop-app[data-material="paper"] .workshop-ambient,
+.startit-workshop-app[data-material="pencil"] .workshop-ambient {
+  background: radial-gradient(circle at 30% 10%, rgba(154,109,34,.09), transparent 30rem), #e7dfce;
+}
+.startit-workshop-app[data-material="paper"] .workshop-grid,
+.startit-workshop-app[data-material="pencil"] .workshop-grid {
+  opacity: .18;
+  background-image:
+    linear-gradient(rgba(41,37,31,.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(41,37,31,.055) 1px, transparent 1px);
+}
+.startit-workshop-app[data-material="blueprint"] .workshop-grid {
+  opacity: .2;
+  background-size: 28px 28px;
+}
+.startit-workshop-app[data-material="blueprint"] .workshop-noise { opacity: .018; }
+.startit-workshop-app[data-material="paper"] .workshop-rail,
+.startit-workshop-app[data-material="pencil"] .workshop-rail,
+.startit-workshop-app[data-material="paper"] .workshop-material,
+.startit-workshop-app[data-material="pencil"] .workshop-material {
+  color: rgba(41,37,31,.46);
+}
+
+.workshop-lab-trigger {
+  position: fixed;
+  right: 18px;
+  top: 18px;
+  z-index: 45;
+}
+.workshop-lab-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 13px;
+  border: 1px solid rgba(241,234,217,.18);
+  border-radius: 999px;
+  background: rgba(16,20,27,.72);
+  backdrop-filter: blur(16px);
+  color: var(--startit-chalk);
+  font: 500 9px/1 "DM Mono", ui-monospace, monospace;
+  letter-spacing: .18em;
+}
+.workshop-lab-button:hover {
+  border-color: rgba(201,154,46,.65);
+  box-shadow: 0 12px 40px rgba(0,0,0,.24);
+}
+.startit-workshop-app[data-material="paper"] .workshop-lab-button,
+.startit-workshop-app[data-material="pencil"] .workshop-lab-button {
+  background: rgba(231,223,206,.88);
+}
+
+.workshop-lab-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 22px;
+  background: rgba(3,6,10,.76);
+  backdrop-filter: blur(20px);
+  animation: lab-fade-in 180ms ease-out;
+}
+.workshop-lab-shell {
+  width: min(1120px, 100%);
+  max-height: calc(100vh - 44px);
+  overflow: auto;
+  border: 1px solid rgba(241,234,217,.14);
+  background:
+    linear-gradient(rgba(255,255,255,.02), rgba(255,255,255,0)),
+    #11161e;
+  box-shadow: 0 30px 100px rgba(0,0,0,.52);
+  border-radius: 22px;
+  padding: 24px;
+  scrollbar-width: thin;
+}
+.workshop-lab-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+.workshop-kicker {
+  margin: 0 0 8px;
+  color: rgba(241,234,217,.48);
+  font: 500 9px/1.2 "DM Mono", ui-monospace, monospace;
+  letter-spacing: .19em;
+  text-transform: uppercase;
+}
+.workshop-lab-header h2 {
+  margin: 0;
+  max-width: 720px;
+  color: #f3eddf;
+  font: 800 clamp(30px,5vw,62px)/.9 "Big Shoulders Display", sans-serif;
+  text-transform: uppercase;
+  letter-spacing: -.02em;
+}
+.workshop-lab-close {
+  width: 38px; height: 38px;
+  display: grid; place-items: center;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  border: 1px solid rgba(241,234,217,.15);
+  background: rgba(241,234,217,.04);
+  color: #f3eddf;
+}
+.workshop-lab-tabs {
+  display: flex;
+  gap: 7px;
+  margin-top: 24px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(241,234,217,.1);
+  overflow-x: auto;
+}
+.workshop-lab-tabs button,
+.workshop-material-row button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+  border: 1px solid rgba(241,234,217,.1);
+  background: rgba(241,234,217,.025);
+  color: rgba(241,234,217,.58);
+  border-radius: 999px;
+  padding: 9px 12px;
+  font: 500 10px/1 "DM Mono", ui-monospace, monospace;
+  letter-spacing: .05em;
+}
+.workshop-lab-tabs button.active,
+.workshop-material-row button.active {
+  border-color: rgba(201,154,46,.65);
+  background: rgba(201,154,46,.1);
+  color: #f3eddf;
+}
+.workshop-material-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 14px 0 18px;
+  flex-wrap: wrap;
+}
+.workshop-material-row .workshop-kicker { margin: 0 5px 0 0; }
+.workshop-material-row small {
+  opacity: .45;
+  font-size: 8px;
+}
+
+.business-engine { min-height: 570px; }
+.engine-header {
+  display: flex; justify-content: space-between; align-items: flex-end; gap: 20px;
+}
+.engine-header h3 {
+  margin: 0;
+  color: #f3eddf;
+  font: 700 28px/1 "Big Shoulders Display", sans-serif;
+  text-transform: uppercase;
+}
+.engine-action {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 10px 13px;
+  border: 1px solid rgba(201,154,46,.5);
+  border-radius: 999px;
+  background: rgba(201,154,46,.08);
+  color: #e0b54c;
+  font: 500 9px/1 "DM Mono", ui-monospace, monospace;
+  letter-spacing: .08em;
+}
+.engine-stage {
+  position: relative;
+  height: 405px;
+  margin-top: 8px;
+  border: 1px dashed rgba(241,234,217,.14);
+  background:
+    radial-gradient(circle at 50% 50%, rgba(201,154,46,.06), transparent 36%),
+    linear-gradient(rgba(241,234,217,.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(241,234,217,.018) 1px, transparent 1px);
+  background-size: auto, 32px 32px, 32px 32px;
+  overflow: hidden;
+}
+.engine-wires {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+}
+.engine-wires path {
+  fill: none;
+  stroke: rgba(201,154,46,.42);
+  stroke-width: .28;
+  stroke-dasharray: 1.2 1.1;
+  vector-effect: non-scaling-stroke;
+  animation: stitch-flow 7s linear infinite;
+}
+.engine-node {
+  position: absolute;
+  width: 116px;
+  height: 72px;
+  transform: translate(-50%,-50%);
+  border: 1px solid rgba(241,234,217,.18);
+  border-radius: 12px;
+  background: rgba(17,22,30,.9);
+  color: #f3eddf;
+  box-shadow: 0 12px 34px rgba(0,0,0,.22);
+  transition: transform 220ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+.engine-node span {
+  display: block;
+  font: 800 18px/1 "Big Shoulders Display", sans-serif;
+  letter-spacing: .04em;
+}
+.engine-node small {
+  display: block;
+  margin-top: 7px;
+  color: rgba(241,234,217,.35);
+  font: 500 7px/1 "DM Mono", ui-monospace, monospace;
+  letter-spacing: .16em;
+}
+.engine-node:hover, .engine-node.selected {
+  transform: translate(-50%,-50%) scale(1.06);
+  border-color: rgba(201,154,46,.8);
+  box-shadow: 0 0 0 1px rgba(201,154,46,.18), 0 18px 50px rgba(0,0,0,.32);
+}
+.business-engine.is-exploded .engine-node:nth-of-type(2) { transform: translate(calc(-50% - 35px),calc(-50% - 15px)); }
+.business-engine.is-exploded .engine-node:nth-of-type(3) { transform: translate(calc(-50% + 35px),calc(-50% - 15px)); }
+.business-engine.is-exploded .engine-node:nth-of-type(4) { transform: translate(-50%,calc(-50% + 18px)); }
+.business-engine.is-exploded .engine-node:nth-of-type(5) { transform: translate(calc(-50% - 35px),calc(-50% + 30px)); }
+.business-engine.is-exploded .engine-node:nth-of-type(6) { transform: translate(calc(-50% + 35px),calc(-50% + 30px)); }
+.engine-inspector {
+  display: flex; align-items: center; justify-content: space-between; gap: 20px;
+  margin-top: 12px;
+  padding: 15px 17px;
+  border: 1px solid rgba(241,234,217,.1);
+  background: rgba(241,234,217,.025);
+}
+.engine-index {
+  display: block; color: rgba(241,234,217,.34);
+  font: 500 8px/1 "DM Mono", ui-monospace, monospace; letter-spacing: .16em;
+}
+.engine-inspector strong {
+  display: block; margin-top: 5px;
+  color: #e0b54c;
+  font: 800 23px/1 "Big Shoulders Display", sans-serif;
+}
+.engine-inspector p { margin: 5px 0 0; color: rgba(241,234,217,.58); font-size: 12px; }
+.engine-inspector button {
+  display: inline-flex; align-items: center; gap: 6px;
+  border: 0; background: none; color: rgba(241,234,217,.4);
+  font: 500 8px/1 "DM Mono", ui-monospace, monospace;
+}
+
+.blueprint-board {
+  position: relative;
+  min-height: 560px;
+  overflow: hidden;
+  border: 1px solid rgba(127,200,255,.3);
+  color: #cfe7ff;
+  background:
+    linear-gradient(rgba(127,200,255,.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(127,200,255,.08) 1px, transparent 1px),
+    #071a2d;
+  background-size: 28px 28px;
+}
+.blueprint-board:after {
+  content: ""; position: absolute; inset: 12px; border: 1px solid rgba(127,200,255,.18); pointer-events: none;
+}
+.blueprint-stamp {
+  position: absolute; top: 24px; right: 28px;
+  font: 500 8px/1 "DM Mono", monospace; letter-spacing: .16em; opacity: .62;
+}
+.blueprint-title {
+  position: absolute; left: 38px; top: 34px;
+  font: 800 clamp(34px,7vw,74px)/.82 "Big Shoulders Display", sans-serif;
+  letter-spacing: -.02em;
+}
+.blueprint-line {
+  position: absolute;
+  height: 1px; background: rgba(127,200,255,.48);
+  transform-origin: left center;
+}
+.blueprint-line-a { left: 13%; top: 42%; width: 74%; transform: rotate(8deg); }
+.blueprint-line-b { left: 16%; top: 61%; width: 66%; transform: rotate(-12deg); }
+.blueprint-line-c { left: 35%; top: 27%; width: 42%; transform: rotate(88deg); }
+.blueprint-note {
+  position: absolute; padding: 10px 12px;
+  border: 1px solid rgba(127,200,255,.32);
+  background: rgba(7,26,45,.66);
+  font: 500 10px/1.4 "DM Mono", monospace;
+  letter-spacing: .04em;
+}
+.blueprint-note span { opacity: .55; }
+.note-a { left: 9%; top: 34%; }
+.note-b { right: 8%; top: 52%; }
+.note-c { left: 31%; bottom: 14%; }
+.blueprint-dimension {
+  position: absolute; bottom: 25px; right: 30px;
+  font: 500 9px/1 "DM Mono", monospace; letter-spacing: .14em; opacity: .58;
+}
+
+.pencil-board {
+  min-height: 560px;
+  padding: 18px;
+  background: #bcb3a2;
+}
+.pencil-paper {
+  position: relative; min-height: 524px; padding: 48px 8vw 60px;
+  overflow: hidden;
+  color: #29251f;
+  background:
+    radial-gradient(circle at 18% 16%, rgba(255,255,255,.65), transparent 20rem),
+    #eee6d6;
+  box-shadow: 0 20px 45px rgba(0,0,0,.25);
+  transform: rotate(-.35deg);
+}
+.pencil-paper:before {
+  content: ""; position: absolute; left: 36px; top: 0; bottom: 0; width: 1px;
+  background: rgba(154,78,45,.24);
+}
+.pencil-margin { font: 500 8px/1 "DM Mono", monospace; letter-spacing: .14em; opacity: .48; }
+.pencil-paper h3 {
+  max-width: 680px; margin: 60px 0 30px;
+  font: 800 clamp(32px,6vw,70px)/.88 "Big Shoulders Display", sans-serif;
+  text-transform: uppercase;
+}
+.pencil-paper p { font: 500 17px/1.5 "DM Mono", monospace; }
+.pencil-strike { opacity: .55; text-decoration: line-through; text-decoration-thickness: 2px; }
+.pencil-correction {
+  max-width: 620px;
+  color: #403b33;
+  transform: rotate(-1deg);
+}
+.pencil-arrow { margin: 24px 0; font: 600 16px/1.2 "DM Mono", monospace; color: #8c542e; transform: rotate(-2deg); }
+.pencil-box {
+  max-width: 560px; margin-top: 48px; padding: 15px;
+  border: 2px solid rgba(64,59,51,.58);
+  font: 600 11px/1.5 "DM Mono", monospace;
+  transform: rotate(.8deg);
+}
+.pencil-caption {
+  display: flex; align-items: center; gap: 7px; justify-content: flex-end;
+  margin-top: 10px; color: rgba(41,37,31,.64);
+  font: 500 9px/1 "DM Mono", monospace; letter-spacing: .06em;
+}
+
+.workshop-lab-footer {
+  display: flex; align-items: center; gap: 18px; margin-top: 15px;
+  color: rgba(241,234,217,.34);
+  font: 500 8px/1 "DM Mono", monospace; letter-spacing: .13em;
+}
+.workshop-lab-footer button {
+  margin-left: auto; display: inline-flex; align-items: center; gap: 5px;
+  border: 0; background: none; color: #e0b54c;
+  font: 500 8px/1 "DM Mono", monospace; letter-spacing: .08em;
+}
+
+@keyframes lab-fade-in { from { opacity: 0; transform: scale(.985); } to { opacity: 1; transform: scale(1); } }
+@keyframes stitch-flow { to { stroke-dashoffset: -30; } }
+
+@media (max-width: 700px) {
+  .workshop-lab-backdrop { padding: 8px; }
+  .workshop-lab-shell { max-height: calc(100vh - 16px); padding: 15px; border-radius: 16px; }
+  .workshop-lab-header h2 { font-size: 38px; }
+  .engine-header { align-items: flex-start; flex-direction: column; }
+  .engine-stage { height: 430px; }
+  .engine-node { width: 96px; height: 64px; }
+  .engine-node span { font-size: 15px; }
+  .engine-inspector { align-items: flex-start; flex-direction: column; }
+  .blueprint-board, .pencil-board { min-height: 500px; }
+  .blueprint-title { left: 22px; top: 28px; }
+  .blueprint-note { font-size: 8px; }
+  .note-a { left: 5%; top: 36%; }
+  .note-b { right: 5%; top: 54%; }
+  .note-c { left: 20%; bottom: 10%; }
+  .pencil-paper { padding: 42px 34px 50px 56px; }
+  .pencil-paper:before { left: 28px; }
+  .workshop-lab-footer { flex-wrap: wrap; }
+  .workshop-lab-footer button { width: 100%; justify-content: flex-end; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workshop-lab-backdrop, .engine-wires path { animation: none; }
+  .engine-node { transition: none; }
+}
