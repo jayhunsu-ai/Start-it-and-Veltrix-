@@ -12,42 +12,10 @@ const PARTS = [
 ];
 
 const MATERIALS = {
-  denim: {
-    background: "#0b1119",
-    base: "#31506b",
-    roughness: 0.88,
-    metalness: 0.04,
-    weave: true,
-    grid: false,
-    warm: false,
-  },
-  blueprint: {
-    background: "#061a2f",
-    base: "#0b4e83",
-    roughness: 0.55,
-    metalness: 0.12,
-    weave: false,
-    grid: true,
-    warm: false,
-  },
-  paper: {
-    background: "#1b1814",
-    base: "#e8deca",
-    roughness: 0.96,
-    metalness: 0.01,
-    weave: false,
-    grid: false,
-    warm: true,
-  },
-  pencil: {
-    background: "#24211c",
-    base: "#403b34",
-    roughness: 0.78,
-    metalness: 0.06,
-    weave: false,
-    grid: false,
-    warm: true,
-  },
+  denim: { background: "#0b1119", base: "#31506b", roughness: 0.88, metalness: 0.04, edge: 0xc7d8e4 },
+  blueprint: { background: "#061a2f", base: "#0b4e83", roughness: 0.55, metalness: 0.12, edge: 0x78c8ff },
+  paper: { background: "#1b1814", base: "#e8deca", roughness: 0.96, metalness: 0.01, edge: 0x8e7347 },
+  pencil: { background: "#24211c", base: "#403b34", roughness: 0.78, metalness: 0.06, edge: 0xd2cdc3 },
 };
 
 function makeTexture(kind) {
@@ -81,8 +49,7 @@ function makeTexture(kind) {
     ctx.fillStyle = "#e8deca";
     ctx.fillRect(0, 0, size, size);
     for (let i = 0; i < 5000; i += 1) {
-      const alpha = Math.random() * 0.06;
-      ctx.fillStyle = `rgba(80,60,35,${alpha})`;
+      ctx.fillStyle = `rgba(80,60,35,${Math.random() * 0.06})`;
       ctx.fillRect(Math.random() * size, Math.random() * size, 1, 1);
     }
     ctx.strokeStyle = "rgba(151,105,38,.12)";
@@ -133,11 +100,9 @@ export default function MaterialEngine3D({ material = "denim", exploded = false,
 
     const ambient = new THREE.HemisphereLight(0xf2ead8, 0x080b10, 1.9);
     scene.add(ambient);
-
     const key = new THREE.DirectionalLight(0xffffff, 4.2);
     key.position.set(5, 8, 10);
     scene.add(key);
-
     const rim = new THREE.PointLight(0xc99a2e, 18, 18, 2);
     rim.position.set(-5, 3, 6);
     scene.add(rim);
@@ -156,7 +121,7 @@ export default function MaterialEngine3D({ material = "denim", exploded = false,
     scene.add(root);
 
     const core = new THREE.Mesh(
-      new THREE.CylinderGeometry(1.32, 1.48, 0.72, 64, 1, false),
+      new THREE.CylinderGeometry(1.32, 1.48, 0.72, 64),
       new THREE.MeshStandardMaterial({ color: 0xc99a2e, metalness: 0.72, roughness: 0.25 })
     );
     core.rotation.x = Math.PI / 2;
@@ -177,45 +142,62 @@ export default function MaterialEngine3D({ material = "denim", exploded = false,
     ring.rotation.x = Math.PI / 2;
     root.add(ring);
 
-    const texture = makeTexture(material);
+    const textures = Object.fromEntries(Object.keys(MATERIALS).map((key) => [key, makeTexture(key)]));
     const meshes = [];
-    const shared = MATERIALS[material] || MATERIALS.denim;
 
     PARTS.forEach((part, index) => {
       const group = new THREE.Group();
       group.userData.part = part;
       const geometry = new THREE.BoxGeometry(1.65, 0.5, 1.2);
       const mat = new THREE.MeshPhysicalMaterial({
-        color: shared.base,
-        map: texture,
-        roughness: shared.roughness,
-        metalness: shared.metalness,
-        clearcoat: material === "paper" ? 0.02 : 0.24,
+        color: 0xffffff,
+        map: textures.denim,
+        roughness: MATERIALS.denim.roughness,
+        metalness: MATERIALS.denim.metalness,
+        clearcoat: 0.24,
         clearcoatRoughness: 0.58,
       });
       const mesh = new THREE.Mesh(geometry, mat);
-      mesh.position.z = 0;
       group.add(mesh);
 
       const edge = new THREE.LineSegments(
         new THREE.EdgesGeometry(geometry),
-        new THREE.LineBasicMaterial({ color: material === "paper" ? 0x8e7347 : 0xc99a2e, transparent: true, opacity: 0.48 })
+        new THREE.LineBasicMaterial({ color: MATERIALS.denim.edge, transparent: true, opacity: 0.48 })
       );
       group.add(edge);
-
-      group.position.set(0, 0, 0);
       group.rotation.z = part.r;
       group.userData.index = index;
       root.add(group);
       meshes.push(group);
     });
 
-    const connectors = PARTS.map((part) => {
-      const geometry = new THREE.CylinderGeometry(0.018, 0.018, 1, 8);
-      const line = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: 0xc99a2e, metalness: 0.7, roughness: 0.28, emissive: 0x241700 }));
+    const connectors = PARTS.map(() => {
+      const line = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.018, 0.018, 1, 8),
+        new THREE.MeshStandardMaterial({ color: 0xc99a2e, metalness: 0.7, roughness: 0.28, emissive: 0x241700, transparent: true })
+      );
       root.add(line);
       return line;
     });
+
+    let appliedMaterial = null;
+    const applyMaterial = (kind) => {
+      const key = MATERIALS[kind] ? kind : "denim";
+      const def = MATERIALS[key];
+      scene.background = new THREE.Color(def.background);
+      meshes.forEach((group) => {
+        const mesh = group.children[0];
+        const edge = group.children[1];
+        mesh.material.map = textures[key];
+        mesh.material.color.set(def.base);
+        mesh.material.roughness = def.roughness;
+        mesh.material.metalness = def.metalness;
+        mesh.material.clearcoat = key === "paper" ? 0.02 : key === "blueprint" ? 0.38 : 0.22;
+        mesh.material.needsUpdate = true;
+        edge.material.color.set(def.edge);
+      });
+      appliedMaterial = key;
+    };
 
     const resize = () => {
       const width = Math.max(1, mount.clientWidth);
@@ -230,7 +212,7 @@ export default function MaterialEngine3D({ material = "denim", exploded = false,
 
     let dragging = false;
     let lastX = 0;
-    const down = (e) => { dragging = true; lastX = e.clientX; };
+    const down = (e) => { dragging = true; lastX = e.clientX; renderer.domElement.setPointerCapture?.(e.pointerId); };
     const move = (e) => {
       if (!dragging) return;
       root.rotation.y += (e.clientX - lastX) * 0.008;
@@ -260,15 +242,12 @@ export default function MaterialEngine3D({ material = "denim", exploded = false,
       raf = requestAnimationFrame(animate);
       const t = clock.getElapsedTime();
       const s = stateRef.current;
-      root.rotation.y += dragging ? 0 : 0.0018;
-      const matDef = MATERIALS[s.material] || MATERIALS.denim;
-      scene.background = new THREE.Color(matDef.background);
+      if (s.material !== appliedMaterial) applyMaterial(s.material);
 
+      root.rotation.y += dragging ? 0 : 0.0018;
       meshes.forEach((group, i) => {
         const part = PARTS[i];
-        const assembled = new THREE.Vector3(0, 0, 0);
-        const explodedPos = new THREE.Vector3(part.x, part.y, part.z);
-        const target = s.exploded ? explodedPos : assembled;
+        const target = s.exploded ? new THREE.Vector3(part.x, part.y, part.z) : new THREE.Vector3(0, 0, 0);
         group.position.lerp(target, 0.075);
         group.position.z += Math.sin(t * 1.3 + i) * 0.006;
         group.rotation.x = 0.14 + Math.sin(t * 0.8 + i) * 0.02;
@@ -279,8 +258,7 @@ export default function MaterialEngine3D({ material = "denim", exploded = false,
         const b = new THREE.Vector3(0, 0, 0);
         const midpoint = a.clone().lerp(b, 0.5);
         line.position.copy(midpoint);
-        const dist = a.distanceTo(b);
-        line.scale.set(1, dist, 1);
+        line.scale.set(1, a.distanceTo(b), 1);
         line.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), a.clone().sub(b).normalize());
         line.material.opacity = s.exploded ? 0.4 : 0.1;
       });
@@ -296,6 +274,7 @@ export default function MaterialEngine3D({ material = "denim", exploded = false,
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
       renderer.domElement.removeEventListener("click", click);
+      Object.values(textures).forEach((texture) => texture.dispose());
       scene.traverse((obj) => {
         if (obj.geometry) obj.geometry.dispose();
         if (obj.material) {
@@ -303,7 +282,6 @@ export default function MaterialEngine3D({ material = "denim", exploded = false,
           else obj.material.dispose();
         }
       });
-      texture.dispose();
       renderer.dispose();
       mount.removeChild(renderer.domElement);
     };
