@@ -144,7 +144,11 @@ router.post(
   "/extras-order",
   idempotent(async (req, res) => {
     const { userId, extraType } = req.body;
-    const VALID_TYPES = ["brand_kit", "product_manager", "smm", "cac_agent", "legal_check", "media_kit"];
+    // Must match the live Postgres check constraint on extras_orders.extra_type exactly.
+    const VALID_TYPES = [
+      "brandkit", "pm", "smm", "cac", "mediakit", "contract",
+      "ops", "mentorship", "portfolio", "boost", "brand_strategy_session", "legal_check",
+    ];
 
     if (!userId || !VALID_TYPES.includes(extraType)) {
       return res.status(400).json({ error: "userId and a valid extraType are required." });

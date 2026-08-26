@@ -4,6 +4,38 @@ const { getOrCompute } = require("../lib/cache");
 const { idempotent } = require("../lib/idempotency");
 const { db } = require("../lib/supabase");
 const { DRAPER, APPRAISER, STYLIST, APPRENTICE_MASTER } = require("../lib/personas_extra");
+const dns = require("dns").promises;
+const net = require("net");
+
+function isPrivateOrReservedIP(ip) {
+  const type = net.isIP(ip);
+  if (type === 4) {
+    const [a, b] = ip.split(".").map(Number);
+    if (a === 127) return true;
+    if (a === 10) return true;
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 192 && b === 168) return true;
+    if (a === 169 && b === 254) return true;
+    if (a === 0) return true;
+    return false;
+  }
+  if (type === 6) {
+    const lower = ip.toLowerCase();
+    if (lower === "::1") return true;
+    if (lower.startsWith("fe80:")) return true;
+    if (lower.startsWith("fc") || lower.startsWith("fd")) return true;
+    if (lower === "::" || lower.startsWith("::ffff:127.")) return true;
+    return false;
+  }
+  return true;
+}
+
+async function assertSafeUrl(rawUrl) {
+  const parsed = new URL(rawUrl);
+  if (!/^https?:$/.test(parsed.protocol)) throw new Error("unsafe_url:protocol");
+  const { address } = await dns.lookup(parsed.hostname);
+  if (isPrivateOrReservedIP(address)) throw new Error("unsafe_url:private_ip");
+}
 const router = express.Router();
 
 /**
@@ -114,8 +146,17 @@ router.post("/brand-health-check", async (req, res) => {
   if (!/^https?:\/\//i.test(url)) url = `https://${url}`;
 
   try {
+    await assertSafeUrl(url);
+  } catch (e) {
+    return res.status(422).json({ error: "Couldn't read that page. Check the URL and that the site is public." });
+  }
+
+  try {
     const result = await getOrCompute("brand-health-check", { url }, 60 * 60 * 1000, async () => {
-      const pageRes = await fetch(url, { signal: AbortSignal.timeout(8000) });
+      const pageRes = await fetch(url, { signal: AbortSignal.timeout(8000), redirect: "manual" });
+      if (pageRes.status >= 300 && pageRes.status < 400) {
+        throw new Error("fetch_target:redirect_blocked");
+      }
       if (!pageRes.ok) throw new Error(`fetch_target:${pageRes.status}`);
       const html = await pageRes.text();
       const visibleText = stripHtml(html);

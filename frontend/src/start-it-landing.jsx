@@ -459,11 +459,66 @@ function InvestorsPanel() {
   );
 }
 
+/* ---------- Brand intro — a few seconds of atmosphere before the
+   landing page loads, not a splash screen with a logo reveal. Fades
+   to CHALK to hand off cleanly into the landing background. Runs
+   once per browser session. ---------- */
+function IntroOverlay({ onDone }) {
+  const [phase, setPhase] = useState("playing"); // playing | fading
+
+  useEffect(() => {
+    const fadeTimer = setTimeout(() => setPhase("fading"), 3000);
+    const doneTimer = setTimeout(() => onDone?.(), 3500);
+    return () => {
+      clearTimeout(fadeTimer);
+      clearTimeout(doneTimer);
+    };
+  }, [onDone]);
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center transition-colors duration-500"
+      style={{ background: phase === "fading" ? CHALK : DENIM }}
+    >
+      <iframe
+        src="https://share.descript.com/view/FXHW54E5hkZ?autoplay=true&muted=true"
+        title="Start-It intro"
+        allow="autoplay"
+        className={`h-full w-full transition-opacity duration-500 ${phase === "fading" ? "opacity-0" : "opacity-100"}`}
+        style={{ border: "none", pointerEvents: "none" }}
+      />
+      <button
+        onClick={() => onDone?.()}
+        className="absolute bottom-6 right-6 z-10 text-[11px] font-mono uppercase tracking-wide transition-colors hover:text-white"
+        style={{ color: `${CHALK}80` }}
+      >
+        Skip intro →
+      </button>
+    </div>
+  );
+}
+
 export default function StartItLanding({ onStart, onLogIn } = {}) {
   const [hovered, setHovered] = useState(null);
   const [selectedPath, setSelectedPath] = useState(null);
   const [mounted, setMounted] = useState(false);
   const [spineProgress, setSpineProgress] = useState(0);
+  const [showIntro, setShowIntro] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return !window.sessionStorage.getItem("startit_intro_seen");
+    } catch {
+      return true; // sessionStorage blocked (private mode etc.) — still show it once
+    }
+  });
+  const dismissIntro = () => {
+    setShowIntro(false);
+    try {
+      window.sessionStorage.setItem("startit_intro_seen", "1");
+    } catch {
+      /* non-fatal — worst case the intro replays next load */
+    }
+  };
 
   const toolsRef = useRef(null);
   const marketplaceRef = useRef(null);
@@ -490,6 +545,7 @@ export default function StartItLanding({ onStart, onLogIn } = {}) {
   return (
     <div ref={pageRef} style={{ fontFamily: "'Inter', sans-serif" }} className="min-h-screen relative">
       <style>{FONTS}</style>
+      {showIntro && <IntroOverlay onDone={dismissIntro} />}
       <div className="fixed inset-0 -z-10" style={{ background: DENIM }} />
       <StitchLine vertical progress={spineProgress} />
 
