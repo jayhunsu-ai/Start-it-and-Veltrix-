@@ -1,316 +1,53 @@
-/* Phase 3 — mobile-safe Business Engine */
+/* Phase 3/4 — real WebGL material engine styling */
 
 .business-engine {
-  position: relative;
-  width: min(1180px, calc(100% - 32px));
-  margin: 72px auto;
-  padding: clamp(24px, 4vw, 52px);
-  border: 1px solid rgba(241, 234, 217, 0.12);
-  border-radius: 28px;
-  background:
-    radial-gradient(circle at 50% 42%, rgba(201,154,46,.08), transparent 32%),
-    rgba(10, 14, 20, .82);
-  box-shadow: 0 30px 100px rgba(0,0,0,.35);
-  overflow: hidden;
+  min-height: 620px;
 }
 
-.business-engine::before {
-  content: "";
+.engine-stage--3d {
+  position: relative;
+  height: 465px;
+  overflow: hidden;
+  border: 1px dashed rgba(241,234,217,.14);
+  border-radius: 18px;
+  background: #0b1119;
+  box-shadow: inset 0 0 90px rgba(0,0,0,.36);
+}
+
+.material-engine-3d {
   position: absolute;
   inset: 0;
-  pointer-events: none;
-  opacity: .22;
-  background:
-    linear-gradient(rgba(241,234,217,.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(241,234,217,.06) 1px, transparent 1px);
-  background-size: 32px 32px;
-  mask-image: linear-gradient(to bottom, black, transparent 85%);
+  touch-action: none;
+  cursor: grab;
 }
 
-.business-engine__header,
-.engine-inspector {
-  position: relative;
-  z-index: 4;
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 24px;
+.material-engine-3d:active {
+  cursor: grabbing;
 }
 
-.phase-kicker {
-  color: #c99a2e;
-  font: 500 9px/1 "DM Mono", monospace;
-  letter-spacing: .2em;
-}
-
-.business-engine h2 {
-  margin: 10px 0 4px;
-  font: 800 clamp(32px, 6vw, 72px)/.86 "Big Shoulders Display", sans-serif;
-  letter-spacing: -.02em;
-}
-
-.business-engine__header p,
-.engine-inspector p {
-  margin: 0;
-  color: rgba(243,237,223,.56);
-}
-
-.engine-toggle,
-.engine-inspector button {
-  border: 1px solid rgba(201,154,46,.5);
-  border-radius: 999px;
-  padding: 12px 16px;
-  background: rgba(201,154,46,.08);
-  color: #f3eddf;
-  font: 600 10px/1 "DM Mono", monospace;
-  letter-spacing: .14em;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.engine-stage {
-  position: relative;
-  width: min(760px, 100%);
-  aspect-ratio: 1.25;
-  margin: 24px auto 18px;
-  min-height: 390px;
-  perspective: 1000px;
-  transform-style: preserve-3d;
-  overflow: hidden;
-  border-radius: 24px;
-}
-
-.engine-stage::before {
-  content: "";
-  position: absolute;
-  left: 10%;
-  right: 10%;
-  top: 50%;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(201,154,46,.5), transparent);
-}
-
-.engine-axis {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform-origin: center;
-  background: rgba(241,234,217,.08);
-}
-
-.engine-axis--x { width: 78%; height: 1px; transform: translate(-50%, -50%) rotate(-14deg); }
-.engine-axis--y { width: 1px; height: 78%; transform: translate(-50%, -50%) rotate(22deg); }
-
-.engine-core {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  z-index: 3;
-  width: 150px;
-  height: 150px;
-  transform: translate(-50%, -50%) rotateX(58deg) rotateZ(45deg);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  border: 1px solid rgba(201,154,46,.62);
-  background: linear-gradient(145deg, rgba(201,154,46,.14), rgba(10,14,20,.96));
-  box-shadow: 0 28px 55px rgba(0,0,0,.4), inset 0 0 40px rgba(201,154,46,.06);
-  transition: transform 700ms cubic-bezier(.2,.8,.2,1);
-}
-
-.engine-core span,
-.engine-core strong,
-.engine-core small { transform: rotateZ(-45deg) rotateX(-58deg); }
-
-.engine-core span {
-  color: #c99a2e;
-  font: 500 8px/1 "DM Mono", monospace;
-  letter-spacing: .16em;
-}
-.engine-core strong {
-  margin: 8px 0 2px;
-  font: 800 25px/.85 "Big Shoulders Display", sans-serif;
-}
-.engine-core small {
-  color: rgba(243,237,223,.45);
-  font: 500 8px/1 "DM Mono", monospace;
-  letter-spacing: .16em;
-}
-
-.engine-part {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  z-index: 4;
-  width: 132px;
-  min-height: 68px;
-  padding: 10px;
-  border: 1px solid rgba(241,234,217,.14);
-  border-radius: 12px;
-  background: rgba(23,29,38,.92);
-  color: #f3eddf;
-  text-align: left;
-  cursor: pointer;
-  transform:
-    translate(-50%, -50%)
-    translate3d(var(--x), var(--y), var(--z))
-    rotateX(50deg) rotateZ(-4deg);
-  transform-style: preserve-3d;
-  transition:
-    transform 700ms cubic-bezier(.2,.8,.2,1),
-    border-color 220ms ease,
-    box-shadow 220ms ease;
-}
-
-.engine-part:hover,
-.engine-part--active {
-  border-color: rgba(201,154,46,.72);
-  box-shadow: 0 14px 32px rgba(0,0,0,.32), 0 0 0 1px rgba(201,154,46,.08);
-}
-
-.engine-part__number {
+.material-engine-3d canvas {
   display: block;
-  color: rgba(201,154,46,.7);
-  font: 500 8px/1 "DM Mono", monospace;
-  margin-bottom: 6px;
+  width: 100%;
+  height: 100%;
 }
 
-.engine-part strong {
-  display: block;
-  font: 700 19px/.85 "Big Shoulders Display", sans-serif;
-  letter-spacing: .02em;
+.startit-workshop-app[data-material="blueprint"] .engine-stage--3d {
+  background: #061a2f;
+  border-color: rgba(127,200,255,.28);
 }
 
-.engine-part small {
-  display: block;
-  margin-top: 5px;
-  color: rgba(243,237,223,.45);
-  font: 500 8px/1.2 "DM Mono", monospace;
+.startit-workshop-app[data-material="paper"] .engine-stage--3d {
+  background: #1b1814;
+  border-color: rgba(232,222,202,.22);
 }
 
-.engine-orbit {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  border: 1px dashed rgba(201,154,46,.18);
-  border-radius: 50%;
-  transform: translate(-50%, -50%) rotateX(64deg) rotateZ(15deg);
-  pointer-events: none;
-}
-.engine-orbit--one { width: 55%; height: 28%; }
-.engine-orbit--two { width: 78%; height: 42%; opacity: .6; }
-
-.business-engine--motion .engine-orbit--one {
-  animation: engine-orbit 16s linear infinite;
-}
-.business-engine--motion .engine-orbit--two {
-  animation: engine-orbit 24s linear infinite reverse;
-}
-
-.engine-inspector {
-  border-top: 1px solid rgba(241,234,217,.10);
-  padding-top: 18px;
-}
-
-.engine-inspector h3 {
-  margin: 5px 0;
-  font: 800 30px/.9 "Big Shoulders Display", sans-serif;
-}
-
-.engine-mobile-note {
-  display: none;
-  position: relative;
-  z-index: 4;
-  margin: 14px 0 0;
-  color: rgba(243,237,223,.34);
-  font: 500 9px/1.5 "DM Mono", monospace;
-}
-
-@keyframes engine-orbit {
-  from { transform: translate(-50%, -50%) rotateX(64deg) rotateZ(0deg); }
-  to { transform: translate(-50%, -50%) rotateX(64deg) rotateZ(360deg); }
+.startit-workshop-app[data-material="pencil"] .engine-stage--3d {
+  background: #24211c;
+  border-color: rgba(210,205,195,.2);
 }
 
 @media (max-width: 720px) {
-  .business-engine {
-    width: min(100% - 20px, 640px);
-    margin: 40px auto;
-    padding: 18px;
-    border-radius: 20px;
+  .engine-stage--3d {
+    height: 390px;
   }
-
-  .business-engine__header {
-    align-items: flex-start;
-  }
-
-  .business-engine__header p { font-size: 13px; }
-
-  .engine-toggle { padding: 11px 13px; }
-
-  .engine-stage {
-    aspect-ratio: auto;
-    height: 470px;
-    min-height: 0;
-    perspective: none;
-    overflow: visible;
-  }
-
-  .engine-stage::before,
-  .engine-axis { opacity: .55; }
-
-  .engine-core {
-    width: 116px;
-    height: 116px;
-    transform: translate(-50%, -50%);
-  }
-
-  .engine-core span,
-  .engine-core strong,
-  .engine-core small { transform: none; }
-
-  .engine-core strong { font-size: 21px; }
-
-  .engine-part {
-    width: 104px;
-    min-height: 60px;
-    padding: 8px;
-    transform:
-      translate(-50%, -50%)
-      translate3d(
-        calc(var(--x) * .55),
-        calc(var(--y) * .58),
-        0
-      );
-  }
-
-  .engine-stage--assembled .engine-part {
-    transform: translate(-50%, -50%) translate3d(0,0,0);
-  }
-
-  .engine-stage--exploded .engine-part {
-    transition-duration: 450ms;
-  }
-
-  .engine-part strong { font-size: 16px; }
-  .engine-part small { font-size: 7px; }
-
-  .engine-orbit { opacity: .45; }
-
-  .engine-inspector {
-    align-items: center;
-  }
-
-  .engine-inspector button { padding: 11px 12px; }
-
-  .engine-mobile-note { display: block; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .business-engine--motion .engine-orbit--one,
-  .business-engine--motion .engine-orbit--two {
-    animation: none;
-  }
-  .engine-part,
-  .engine-core { transition: none; }
 }

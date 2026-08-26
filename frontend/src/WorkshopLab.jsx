@@ -3,6 +3,7 @@ import {
   Box, Pencil, X, ChevronRight, RotateCcw, Layers3, Sparkles,
   DraftingCompass
 } from "lucide-react";
+import MaterialEngine3D from "./MaterialEngine3D.jsx";
 
 const MATERIALS = [
   { id: "denim", label: "Denim", note: "Workshop" },
@@ -81,20 +82,12 @@ export default function WorkshopLab({ mode, onModeChange }) {
                   </button>
                 </div>
 
-                <div className="engine-stage" aria-label="Interactive business engine">
-                  <svg className="engine-wires" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-                    <path d="M50 18 L28 36 M50 18 L72 36 M28 43 L50 55 M72 43 L50 55 M50 63 L28 78 M50 63 L72 78" />
-                  </svg>
-                  {NODES.map((node) => (
-                    <button
-                      key={node.id}
-                      className={`engine-node ${selected === node.id ? "selected" : ""}`}
-                      style={{ left: `${node.x}%`, top: `${node.y}%` }}
-                      onClick={() => setSelected(node.id)}
-                    >
-                      <span>{node.label}</span><small>{selected === node.id ? "INSPECT" : "OPEN"}</small>
-                    </button>
-                  ))}
+                <div className="engine-stage engine-stage--3d">
+                  <MaterialEngine3D
+                    material={material.id}
+                    exploded={exploded}
+                    onPartSelect={(part) => setSelected(part.id)}
+                  />
                 </div>
 
                 <div className="engine-inspector">
@@ -138,7 +131,7 @@ export default function WorkshopLab({ mode, onModeChange }) {
 
             <footer className="workshop-lab-footer">
               <span>{material.label.toUpperCase()} / {material.note.toUpperCase()}</span>
-              <span>PHASE 02</span>
+              <span>PHASE 04 · REAL 3D MATERIALS</span>
               <button onClick={() => setOpen(false)}>RETURN TO WORKSHOP <ChevronRight size={13} /></button>
             </footer>
           </div>
