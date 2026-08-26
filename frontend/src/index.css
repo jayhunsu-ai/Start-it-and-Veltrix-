@@ -2,7 +2,209 @@
 @tailwind components;
 @tailwind utilities;
 
-html, body, #root {
-  height: 100%;
-  margin: 0;
+@import url('https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  --startit-denim: #10141b;
+  --startit-denim-2: #171d26;
+  --startit-chalk: #f3eddf;
+  --startit-muted: #a7a294;
+  --startit-gold: #c99a2e;
+  --startit-gold-bright: #e0b54c;
+  --startit-copper: #b0693d;
+  --startit-line: rgba(241, 234, 217, 0.12);
+}
+
+html, body, #root { height: 100%; margin: 0; }
+
+html {
+  background: var(--startit-denim);
+  color-scheme: dark;
+  scroll-behavior: smooth;
+}
+
+body {
+  min-width: 320px;
+  background:
+    radial-gradient(circle at 18% 8%, rgba(201, 154, 46, 0.08), transparent 32rem),
+    radial-gradient(circle at 84% 72%, rgba(176, 105, 61, 0.07), transparent 28rem),
+    var(--startit-denim);
+  color: var(--startit-chalk);
+  font-family: Inter, system-ui, sans-serif;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection { background: var(--startit-gold); color: var(--startit-denim); }
+
+button, a, input, textarea, select { touch-action: manipulation; }
+button { font-family: inherit; }
+
+button:focus-visible, a:focus-visible, input:focus-visible,
+textarea:focus-visible, select:focus-visible {
+  outline: 2px solid var(--startit-gold-bright);
+  outline-offset: 3px;
+}
+
+textarea::placeholder, input::placeholder { color: rgba(241, 234, 217, 0.34); }
+
+.startit-workshop-app {
+  min-height: 100%;
+  position: relative;
+  isolation: isolate;
+  overflow-x: clip;
+}
+
+.startit-workshop-content {
+  position: relative;
+  z-index: 2;
+}
+
+.workshop-ambient {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(201, 154, 46, 0.045), transparent 38%),
+    linear-gradient(180deg, rgba(255,255,255,0.015), transparent 22%);
+}
+
+.workshop-glow {
+  position: absolute;
+  width: 42vw;
+  height: 42vw;
+  min-width: 320px;
+  min-height: 320px;
+  border-radius: 999px;
+  filter: blur(80px);
+  opacity: 0.26;
+  animation: workshop-drift 18s ease-in-out infinite alternate;
+}
+
+.workshop-glow-a { left: -18vw; top: 12vh; background: rgba(201, 154, 46, 0.13); }
+.workshop-glow-b {
+  right: -20vw;
+  bottom: 4vh;
+  background: rgba(176, 105, 61, 0.10);
+  animation-delay: -7s;
+}
+
+.workshop-grid {
+  position: absolute;
+  inset: 0;
+  opacity: 0.11;
+  background-image:
+    linear-gradient(rgba(241,234,217,0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(241,234,217,0.055) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: linear-gradient(to bottom, black, transparent 88%);
+}
+
+.workshop-noise {
+  position: absolute;
+  inset: 0;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.55'/%3E%3C/svg%3E");
+}
+
+.workshop-rail {
+  position: fixed;
+  left: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 30;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  color: rgba(241,234,217,0.34);
+  font-family: "DM Mono", ui-monospace, monospace;
+  font-size: 8px;
+  letter-spacing: 0.18em;
+  writing-mode: vertical-rl;
+}
+
+.workshop-rail-mark { color: rgba(201,154,46,0.85); font-weight: 500; }
+
+.workshop-rail-line {
+  width: 1px;
+  height: 74px;
+  background: linear-gradient(to bottom, rgba(201,154,46,0), rgba(201,154,46,0.65), rgba(201,154,46,0));
+}
+
+.workshop-material {
+  position: fixed;
+  right: 20px;
+  bottom: 16px;
+  z-index: 30;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(241,234,217,0.34);
+  font: 500 8px/1 "DM Mono", ui-monospace, monospace;
+  letter-spacing: 0.15em;
+}
+
+.workshop-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--startit-gold);
+  box-shadow: 0 0 12px rgba(201,154,46,0.45);
+}
+
+.workshop-material-separator { color: rgba(201,154,46,0.65); }
+
+.startit-workshop-content h1,
+.startit-workshop-content h2,
+.startit-workshop-content h3 { text-wrap: balance; }
+
+.startit-workshop-content button {
+  transition: transform 160ms ease, box-shadow 180ms ease,
+    border-color 180ms ease, background-color 180ms ease, opacity 180ms ease;
+}
+
+.startit-workshop-content button:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.20);
+}
+
+.startit-workshop-content button:not(:disabled):active {
+  transform: translateY(1px) scale(0.985);
+}
+
+.startit-workshop-content textarea,
+.startit-workshop-content input {
+  transition: border-color 180ms ease, background-color 180ms ease, box-shadow 180ms ease;
+}
+
+.startit-workshop-content textarea:hover,
+.startit-workshop-content input:hover {
+  background-color: rgba(241,234,217,0.025) !important;
+}
+
+.startit-workshop-content textarea:focus,
+.startit-workshop-content input:focus {
+  box-shadow: 0 0 0 3px rgba(201,154,46,0.08), 0 12px 40px rgba(0,0,0,0.16);
+}
+
+@keyframes workshop-drift {
+  from { transform: translate3d(0, -10px, 0) scale(0.96); }
+  to { transform: translate3d(22px, 16px, 0) scale(1.04); }
+}
+
+@media (max-width: 640px) {
+  .workshop-rail { left: 7px; opacity: 0.7; }
+  .workshop-material { right: 10px; bottom: 8px; font-size: 7px; }
+  .workshop-grid { background-size: 32px 32px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .workshop-glow { animation: none; }
+  .startit-workshop-content button { transition: none; }
 }
