@@ -197,14 +197,26 @@ function formatTrack(v) {
 
 /* ---------- Shared UI ---------- */
 
-function StitchRail({ stepIndex, onJump }) {
+// Desktop-only vertical progress rail. `onJump` is deliberately
+// gated by the caller (see `handleRailJump` below) — this component
+// no longer decides on its own whether a jump is allowed, since that
+// decision depends on auth state and how far the user has actually
+// progressed, not just which step index was clicked.
+function StitchRail({ stepIndex, furthestStepReached, onJump }) {
   return (
     <div className="hidden md:flex flex-col items-start gap-0 pt-10 pl-2 w-44 shrink-0">
       {STEPS.map((s, i) => {
         const done = i < stepIndex;
         const active = i === stepIndex;
+        const reachable = i <= furthestStepReached;
         return (
-          <button key={s.key} onClick={() => onJump(i)} className="group relative flex items-start gap-3 pb-8 text-left last:pb-0">
+          <button
+            key={s.key}
+            onClick={() => onJump(i)}
+            disabled={!reachable}
+            aria-disabled={!reachable}
+            className={`group relative flex items-start gap-3 pb-8 text-left last:pb-0 ${reachable ? "" : "cursor-not-allowed"}`}
+          >
             {i !== STEPS.length - 1 && (
               <span
                 className={`absolute left-[7px] top-4 h-full w-px ${done ? "bg-[#1CB5C9]" : ""}`}
@@ -215,7 +227,7 @@ function StitchRail({ stepIndex, onJump }) {
               {done && <Check className="h-2 w-2 text-white" strokeWidth={4} />}
               {active && <span className="h-1.5 w-1.5 rounded-full bg-[#12182B]" />}
             </span>
-            <span className={`text-[12.5px] leading-4 font-medium tracking-tight ${active ? "text-[#12182B]" : done ? "text-[#453F2E]" : "text-[#9A9384]"}`}>{s.label}</span>
+            <span className={`text-[12.5px] leading-4 font-medium tracking-tight ${active ? "text-[#12182B]" : done ? "text-[#453F2E]" : reachable ? "text-[#9A9384]" : "text-[#C9C4B6]"}`}>{s.label}</span>
           </button>
         );
       })}
@@ -223,11 +235,36 @@ function StitchRail({ stepIndex, onJump }) {
   );
 }
 
+// Mobile-only horizontal progress indicator. StitchRail is `hidden
+// md:flex` by design — it's a nice presentational device on a real
+// desktop viewport, but on an actual phone browser it ate the width
+// budget for no benefit. Mobile users get their own compact
+// equivalent instead of losing the progress indicator entirely.
+function MobileProgressBar({ stepIndex }) {
+  const pct = Math.round((stepIndex / (STEPS.length - 1)) * 100);
+  return (
+    <div className="mb-4 md:hidden">
+      <div className="mb-1.5 flex items-center justify-between">
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-[#726C5C]">{STEPS[stepIndex].label}</span>
+        <span className="text-[11px] text-[#9A9384]">{stepIndex + 1} / {STEPS.length}</span>
+      </div>
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#E4DFD1]">
+        <div className="h-full rounded-full bg-[#1CB5C9] transition-all duration-300" style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  );
+}
+
+// The phone-mockup bezel is a desktop/tablet presentational device —
+// nice when there's screen real estate to spare, but a "phone inside
+// a phone" on an actual mobile browser. Below `md`, this renders as
+// a plain full-width/full-height native flow instead: no border, no
+// fixed 360px width, no fake notch.
 function PhoneChrome({ children }) {
   return (
-    <div className="relative mx-auto w-[360px] max-w-full rounded-[2.25rem] border-[6px] border-[#12182B] bg-[#F7F3EC] shadow-2xl overflow-hidden">
-      <div className="absolute left-1/2 top-0 z-20 h-5 w-28 -translate-x-1/2 rounded-b-2xl bg-[#12182B]" />
-      <div className="relative h-[680px] overflow-y-auto pt-8 pb-6 px-6">{children}</div>
+    <div className="relative mx-auto w-full overflow-hidden rounded-none border-0 bg-[#F7F3EC] md:w-[360px] md:max-w-full md:rounded-[2.25rem] md:border-[6px] md:border-[#12182B] md:shadow-2xl">
+      <div className="absolute left-1/2 top-0 z-20 hidden h-5 w-28 -translate-x-1/2 rounded-b-2xl bg-[#12182B] md:block" />
+      <div className="relative h-[calc(100dvh-9rem)] overflow-y-auto px-4 pb-6 pt-2 md:h-[680px] md:px-6 md:pt-8">{children}</div>
     </div>
   );
 }
@@ -260,23 +297,41 @@ function BackLink({ onClick }) {
 
 /* ---------- Main ---------- */
 
-export default function StartItDemo({ initialSegment, initialMode, onExit } = {}) {
-  const [step, setStep] = useState(initialMode === "login" ? 1 : 0);
+export default function StartItDemo({
+  initialSegment,
+  initialMode,
+  onExit,
+  // Set by App.jsx after checking for an existing Supabase session.
+  // When present, this is a returning, already-authenticated user —
+  // boot straight into their resume point (dashboard, or wherever
+  // onboarding left off) instead of the welcome/signup step.
+  initialStep,
+  initialAuthUserId,
+  initialProfile,
+} = {}) {
+  const isResuming = initialStep != null && initialAuthUserId != null;
+  const [step, setStep] = useState(isResuming ? initialStep : initialMode === "login" ? 1 : 0);
+  // The furthest step this session has legitimately reached through
+  // normal forward progress (goNext, a successful sign-up/log-in).
+  // StitchRail can only jump to steps <= this value — it can never
+  // exceed what auth + onboarding has actually unlocked, which is
+  // what closes the "click straight to dashboard" bypass.
+  const [furthestStepReached, setFurthestStepReached] = useState(isResuming ? initialStep : initialMode === "login" ? 1 : 0);
   const [authMode, setAuthMode] = useState(initialMode === "login" ? "login" : "signup");
-  const [name, setName] = useState("");
+  const [name, setName] = useState(initialProfile?.display_name || "");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [authUserId, setAuthUserId] = useState(null);
-  const [authStatus, setAuthStatus] = useState("idle"); // idle | loading | done | error
+  const [authUserId, setAuthUserId] = useState(initialAuthUserId || null);
+  const [authStatus, setAuthStatus] = useState(isResuming ? "done" : "idle"); // idle | loading | done | error
   const [authError, setAuthError] = useState(null);
   const [businessIdea, setBusinessIdea] = useState("");
-  const [segment, setSegment] = useState(initialSegment || null);
+  const [segment, setSegment] = useState(initialProfile?.segment || initialSegment || null);
   const [lang, setLang] = useState(null);
   const [openTool, setOpenTool] = useState(null);
   const [toolsSeen, setToolsSeen] = useState([]);
   const [toolInputs, setToolInputs] = useState({});
-  const [tier, setTier] = useState("growth");
+  const [tier, setTier] = useState(initialProfile?.tier || "growth");
   const [extras, setExtras] = useState(["brandkit"]);
   const [connected, setConnected] = useState([]);
   const [posted, setPosted] = useState(false);
@@ -286,8 +341,29 @@ export default function StartItDemo({ initialSegment, initialMode, onExit } = {}
   const tiers = TIERS_BY_SEGMENT[seg];
   const extrasOptions = EXTRAS_BY_SEGMENT[seg];
 
-  const goNext = () => setStep((s) => Math.min(s + 1, STEPS.length - 1));
+  // Every forward step through goNext is, by definition, a
+  // legitimate advance — bump the high-water mark along with it.
+  // This is the only place besides handleSignUp/handleLogIn that
+  // furthestStepReached can move, which is what makes it trustworthy
+  // as an auth-bypass gate.
+  const goNext = () =>
+    setStep((s) => {
+      const next = Math.min(s + 1, STEPS.length - 1);
+      setFurthestStepReached((f) => Math.max(f, next));
+      return next;
+    });
   const goBack = () => setStep((s) => Math.max(s - 1, 0));
+
+  // Gate for the desktop rail's step-jump sidebar. This is the actual
+  // fix for the auth-bypass bug: StitchRail no longer calls setStep
+  // directly, it calls this, and this refuses any index beyond the
+  // furthest step actually earned through real progress. Since
+  // furthestStepReached only ever moves via goNext/handleSignUp/
+  // handleLogIn, there is no click path from step 1 straight to step
+  // 9 without a real signup/login having happened in between.
+  const handleRailJump = (i) => {
+    if (i <= furthestStepReached) setStep(i);
+  };
 
   // Real Supabase Auth — replaces the old "just store a name in local
   // state" placeholder. This is what makes every downstream user_id
@@ -350,8 +426,11 @@ export default function StartItDemo({ initialSegment, initialMode, onExit } = {}
       setName(profile.display_name || "");
       if (profile.segment) setSegment(profile.segment);
       if (profile.tier) setTier(profile.tier);
-      setStep(profile.segment ? 9 : 2); // known user -> dashboard, else finish onboarding
+      const dest = profile.segment ? 9 : 2; // known user -> dashboard, else finish onboarding
+      setFurthestStepReached((f) => Math.max(f, dest));
+      setStep(dest);
     } else {
+      setFurthestStepReached((f) => Math.max(f, 2));
       setStep(2);
     }
   };
@@ -560,12 +639,12 @@ export default function StartItDemo({ initialSegment, initialMode, onExit } = {}
   const liveSlug = slugify(businessIdea || brandName);
 
   return (
-    <div className="min-h-screen w-full bg-[#F1ECE0] px-6 py-10">
+    <div className="min-h-screen w-full bg-[#F1ECE0] px-4 py-6 md:px-6 md:py-10">
       <div className="mx-auto flex max-w-4xl items-start justify-center gap-8">
-        <StitchRail stepIndex={step} onJump={setStep} />
+        <StitchRail stepIndex={step} furthestStepReached={furthestStepReached} onJump={handleRailJump} />
 
-        <div className="flex flex-col items-center">
-          <div className="mb-5 flex w-full items-center justify-between gap-2.5">
+        <div className="flex w-full flex-col items-center md:w-auto">
+          <div className="mb-3 flex w-full items-center justify-between gap-2.5 md:mb-5">
             <div className="flex items-center gap-2.5">
               <svg width="30" height="30" viewBox="0 0 40 40" fill="none">
                 <path d="M20 6 L32 32 L25 32 L20 20 L15 32 L8 32 Z" fill="#F2B705" stroke="#E0177D" strokeWidth="1.6" strokeLinejoin="round" />
@@ -588,6 +667,8 @@ export default function StartItDemo({ initialSegment, initialMode, onExit } = {}
               </button>
             )}
           </div>
+
+          <MobileProgressBar stepIndex={step} />
 
           <PhoneChrome>
             {/* 0 WELCOME */}
