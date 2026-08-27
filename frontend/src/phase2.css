@@ -375,6 +375,15 @@
 @keyframes stitch-flow { to { stroke-dashoffset: -30; } }
 
 @media (max-width: 700px) {
+  /* The floating LAB trigger is fixed at top-right of the entire
+     viewport, independent of scroll position. On mobile, Start-It's
+     own header (logo + exit "X") also sits at the top-right of the
+     content column — the two collided directly, making the exit
+     button hard or impossible to tap without hitting LAB instead.
+     Moving the trigger to the bottom-right on small screens keeps
+     both reachable without touching the desktop layout. */
+  .workshop-lab-trigger { top: auto; bottom: 18px; right: 14px; }
+
   .workshop-lab-backdrop { padding: 8px; }
   .workshop-lab-shell { max-height: calc(100vh - 16px); padding: 15px; border-radius: 16px; }
   .workshop-lab-header h2 { font-size: 38px; }
