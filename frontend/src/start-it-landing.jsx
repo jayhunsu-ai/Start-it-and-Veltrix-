@@ -18,6 +18,8 @@ import {
   AlertTriangle,
   RotateCcw,
 } from "lucide-react";
+import MaterialEngine3D from "./MaterialEngine3D.jsx";
+import "./phase4-3d.css";
 
 /* ============================================================
    START-IT — Visual Identity V3 — "Topstitch"
@@ -530,6 +532,12 @@ export default function StartItLanding({ onStart, onLogIn } = {}) {
   const [selectedPath, setSelectedPath] = useState(null);
   const [mounted, setMounted] = useState(false);
   const [spineProgress, setSpineProgress] = useState(0);
+  // Hero 3D stage: the same MaterialEngine3D that renders the business
+  // build-out post-signup, surfaced here as the hero's signature moment
+  // instead of a static image — it opens once to show the mechanism
+  // (Idea/Brand/Audience/... exploding apart), then reassembles. Not a
+  // loop: same one-time restraint as the intro video above.
+  const [heroExploded, setHeroExploded] = useState(false);
   const [showIntro, setShowIntro] = useState(() => {
     if (typeof window === "undefined") return false;
     try {
@@ -555,6 +563,16 @@ export default function StartItLanding({ onStart, onLogIn } = {}) {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!mounted) return undefined;
+    const openTimer = setTimeout(() => setHeroExploded(true), 1000);
+    const closeTimer = setTimeout(() => setHeroExploded(false), 3400);
+    return () => {
+      clearTimeout(openTimer);
+      clearTimeout(closeTimer);
+    };
+  }, [mounted]);
 
   useEffect(() => {
     const onScroll = () => {
@@ -603,24 +621,35 @@ export default function StartItLanding({ onStart, onLogIn } = {}) {
 
         {/* Hero — hook fast, no throat-clearing */}
         <main className="max-w-6xl mx-auto px-6 sm:px-10 pt-8 sm:pt-14 pb-24">
-          <div className={`max-w-2xl transition-all duration-500 ease-out ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"}`}>
-            <div className="flex items-center gap-2 text-[12px] font-mono uppercase tracking-wide mb-6" style={{ color: `${CHALK}70` }}>
-              <span style={{ color: GOLD }}>●</span> 4 tools · 0 signup · under 60 seconds
+          <div className="grid lg:grid-cols-[1.05fr_0.95fr] gap-10 lg:gap-14 items-center">
+            <div className={`max-w-2xl transition-all duration-500 ease-out ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"}`}>
+              <div className="flex items-center gap-2 text-[12px] font-mono uppercase tracking-wide mb-6" style={{ color: `${CHALK}70` }}>
+                <span style={{ color: GOLD }}>●</span> 4 tools · 0 signup · under 60 seconds
+              </div>
+              <h1
+                style={{ fontFamily: "'Big Shoulders Display', sans-serif" }}
+                className="text-[3rem] sm:text-[4.5rem] leading-[0.95] font-extrabold uppercase tracking-tight mb-6"
+              >
+                Stop guessing.
+                <br />
+                <span style={{ color: GOLD }}>Get fitted.</span>
+              </h1>
+              <p className="text-[16px] sm:text-[18px] leading-relaxed max-w-lg" style={{ color: `${CHALK}A6` }}>
+                Start-It measures your idea — market, voice, ambition — and cuts a brand to fit it. Not a template pack. Try the tools below before you sign up for anything.
+              </p>
             </div>
-            <h1
-              style={{ fontFamily: "'Big Shoulders Display', sans-serif" }}
-              className="text-[3rem] sm:text-[4.5rem] leading-[0.95] font-extrabold uppercase tracking-tight mb-6"
-            >
-              Stop guessing.
-              <br />
-              <span style={{ color: GOLD }}>Get fitted.</span>
-            </h1>
-            <p className="text-[16px] sm:text-[18px] leading-relaxed max-w-lg" style={{ color: `${CHALK}A6` }}>
-              Start-It measures your idea — market, voice, ambition — and cuts a brand to fit it. Not a template pack. Try the tools below before you sign up for anything.
-            </p>
+
+            <div className={`transition-all duration-700 ease-out ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"}`} style={{ transitionDelay: mounted ? "150ms" : "0ms" }}>
+              <div className="engine-stage engine-stage--3d rounded-xl relative h-[340px] sm:h-[400px] lg:h-[460px]">
+                <MaterialEngine3D material="denim" exploded={heroExploded} />
+              </div>
+              <p className="mt-3 text-[10.5px] font-mono uppercase tracking-[0.14em] text-center" style={{ color: `${CHALK}55` }}>
+                Idea · Brand · Audience · Offer · Distribution · Operations · Revenue — drag to inspect
+              </p>
+            </div>
           </div>
 
-          <div className="mt-12 mb-3">
+          <div className="mt-16 mb-3">
             <StitchLine />
           </div>
           <p className="text-[12px] mb-8 font-mono" style={{ color: `${CHALK}66` }}>
