@@ -13,19 +13,32 @@ import "./phase2.css";
 const STEP_SEGMENT = 2;
 const STEP_DASHBOARD = 9;
 
+// Supabase should never be able to hold the entire app hostage.
+// These are intentionally short because the landing page is usable
+// without waiting for auth hydration.
+const SESSION_TIMEOUT_MS = 5000;
+const PROFILE_TIMEOUT_MS = 5000;
+
+function withTimeout(promise, ms, fallback) {
+  return Promise.race([
+    promise,
+    new Promise((resolve) => {
+      setTimeout(() => resolve(fallback), ms);
+    }),
+  ]);
+}
+
 export default function App() {
-  // "checking" avoids a flash of the landing/signup page for a
-  // returning user who already has a valid Supabase session — we
-  // don't know which view to show until the session check resolves.
-  const [view, setView] = useState("checking");
+  // Render the landing page immediately. Authentication is hydrated
+  // in the background so a slow mobile connection, blocked request,
+  // stale refresh token, or Supabase outage cannot produce a blank
+  // screen indefinitely.
+  const [view, setView] = useState("landing");
   const [initialSegment, setInitialSegment] = useState(null);
   const [initialMode, setInitialMode] = useState("signup");
   const [material, setMaterial] = useState("denim");
 
-  // Resume state for a returning, already-authenticated user — set
-  // once by the session check below, then handed to StartItDemo so
-  // it can boot straight into the dashboard (or back into onboarding
-  // exactly where they left off) instead of the welcome/signup step.
+  // Resume state for a returning, already-authenticated user.
   const [resume, setResume] = useState(null); // { step, authUserId, profile } | null
 
   useEffect(() => {
@@ -33,50 +46,79 @@ export default function App() {
 
     async function checkExistingSession() {
       if (!authConfigured) {
-        if (!cancelled) setView("landing");
         return;
       }
 
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
-        if (!cancelled) setView("landing");
-        return;
+      try {
+        const sessionResult = await withTimeout(
+          supabase.auth.getSession(),
+          SESSION_TIMEOUT_MS,
+          { data: { session: null }, error: new Error("Session check timed out") }
+        );
+
+        if (cancelled) return;
+
+        const session = sessionResult?.data?.session;
+
+        // No session, an auth error, or a timeout: keep the landing page.
+        if (!session?.user) {
+          return;
+        }
+
+        // We have a session. Move into the app immediately rather than
+        // making the profile query a second blocking gate.
+        setResume({
+          step: STEP_SEGMENT,
+          authUserId: session.user.id,
+          profile: null,
+        });
+        setView("app");
+
+        // Hydrate the profile in the background. If it fails or times out,
+        // the app still remains usable; StartItDemo can operate from the
+        // authenticated user ID.
+        const profileResult = await withTimeout(
+          supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", session.user.id)
+            .single(),
+          PROFILE_TIMEOUT_MS,
+          { data: null, error: new Error("Profile lookup timed out") }
+        );
+
+        if (cancelled) return;
+
+        const profile = profileResult?.data || null;
+
+        setResume({
+          step: profile?.segment ? STEP_DASHBOARD : STEP_SEGMENT,
+          authUserId: session.user.id,
+          profile,
+        });
+      } catch (error) {
+        // Authentication is an enhancement to the initial render, not
+        // a reason to brick the app. Keep the public landing page usable.
+        console.warn("[Start-it] Auth hydration failed:", error);
       }
-
-      // Valid session exists — this is a returning user. Never send
-      // them back through welcome/signup: pull their profile and
-      // resume exactly where onboarding left off, or straight to the
-      // dashboard if it's already complete.
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", session.user.id)
-        .single();
-
-      if (cancelled) return;
-
-      setResume({
-        step: profile?.segment ? STEP_DASHBOARD : STEP_SEGMENT,
-        authUserId: session.user.id,
-        profile: profile || null,
-      });
-      setView("app");
     }
 
     checkExistingSession();
 
-    // If the session is cleared elsewhere (sign-out, expired refresh
-    // token with no valid grant left), fall back to landing instead
-    // of leaving the user stuck on a dashboard with no session.
+    // Keep the UI responsive to explicit sign-out events.
     let subscription;
     if (authConfigured) {
-      const { data } = supabase.auth.onAuthStateChange((event) => {
-        if (event === "SIGNED_OUT") {
-          setResume(null);
-          setView("landing");
-        }
-      });
-      subscription = data.subscription;
+      try {
+        const { data } = supabase.auth.onAuthStateChange((event) => {
+          if (event === "SIGNED_OUT") {
+            setResume(null);
+            setView("landing");
+          }
+        });
+        subscription = data?.subscription;
+      } catch (error) {
+        console.warn("[Start-it] Auth listener setup failed:", error);
+      }
     }
 
     return () => {
@@ -84,13 +126,6 @@ export default function App() {
       subscription?.unsubscribe();
     };
   }, []);
-
-  if (view === "checking") {
-    // Deliberately minimal — this should resolve in well under a
-    // second against Supabase's local session cache, so a full
-    // loading screen would just be flicker.
-    return <div className="startit-workshop-app" data-material={material} />;
-  }
 
   const content =
     view === "app" ? (
@@ -100,7 +135,10 @@ export default function App() {
         initialStep={resume?.step}
         initialAuthUserId={resume?.authUserId}
         initialProfile={resume?.profile}
-        onExit={() => { setResume(null); setView("landing"); }}
+        onExit={() => {
+          setResume(null);
+          setView("landing");
+        }}
       />
     ) : (
       <StartItLanding
