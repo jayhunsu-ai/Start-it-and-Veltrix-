@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Box, Pencil, X, ChevronRight, RotateCcw, Layers3, Sparkles,
   DraftingCompass
@@ -13,23 +13,94 @@ const MATERIALS = [
   { id: "pencil", label: "Pencil", note: "Rough" },
 ];
 
+// Order matters here — it matches PARTS in MaterialEngine3D.jsx exactly,
+// since it also drives the guided tour's sequence below. "Operations" was
+// previously missing from this list entirely: selecting it in the 3D
+// engine set selected="operations", which found no match here and
+// silently fell back to showing the IDEA description instead.
 const NODES = [
-  { id: "idea", label: "IDEA", detail: "The raw material. What are you actually building?", x: 50, y: 10 },
-  { id: "brand", label: "BRAND", detail: "The promise people remember and repeat.", x: 22, y: 36 },
-  { id: "audience", label: "AUDIENCE", detail: "The people with the problem you can solve.", x: 78, y: 36 },
-  { id: "offer", label: "OFFER", detail: "What someone can actually buy from you.", x: 50, y: 55 },
-  { id: "distribution", label: "DISTRIBUTION", detail: "How the offer finds the right people.", x: 22, y: 78 },
-  { id: "revenue", label: "REVENUE", detail: "How value turns into sustainable money.", x: 78, y: 78 },
+  { id: "idea", label: "IDEA", detail: "The raw material. What are you actually building?" },
+  { id: "brand", label: "BRAND", detail: "The promise people remember and repeat." },
+  { id: "audience", label: "AUDIENCE", detail: "The people with the problem you can solve." },
+  { id: "offer", label: "OFFER", detail: "What someone can actually buy from you." },
+  { id: "distribution", label: "DISTRIBUTION", detail: "How the offer finds the right people." },
+  { id: "operations", label: "OPERATIONS", detail: "The machinery that has to work, quietly, every day." },
+  { id: "revenue", label: "REVENUE", detail: "How value turns into sustainable money." },
 ];
+
+const TOUR_ORDER = NODES.map((node) => node.id);
+const TOUR_SEEN_KEY = "startit_lab_tour_seen";
 
 export default function WorkshopLab({ mode, onModeChange }) {
   const [open, setOpen] = useState(false);
   const [view, setView] = useState("engine");
   const [selected, setSelected] = useState("offer");
   const [exploded, setExploded] = useState(false);
+  // One-time guided assembly tour: opens the exploded view and walks the
+  // selection highlight through every part in order, then reassembles.
+  // Same restraint as the landing page's intro video — it runs once per
+  // browser session and any real interaction cancels it immediately.
+  const [tourActive, setTourActive] = useState(false);
+  const tourTimeoutsRef = useRef([]);
 
   const material = MATERIALS.find((item) => item.id === mode) || MATERIALS[0];
   const selectedNode = NODES.find((node) => node.id === selected) || NODES[0];
+
+  const stopTour = () => {
+    if (tourTimeoutsRef.current.length) {
+      tourTimeoutsRef.current.forEach(clearTimeout);
+      tourTimeoutsRef.current = [];
+    }
+    setTourActive(false);
+    try {
+      window.sessionStorage.setItem(TOUR_SEEN_KEY, "1");
+    } catch {
+      /* non-fatal — worst case the tour replays next open */
+    }
+  };
+
+  useEffect(() => {
+    if (!open || view !== "engine") return undefined;
+
+    let alreadySeen = true;
+    let reducedMotion = false;
+    try {
+      alreadySeen = !!window.sessionStorage.getItem(TOUR_SEEN_KEY);
+      reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    } catch {
+      alreadySeen = true;
+    }
+    if (alreadySeen || reducedMotion) return undefined;
+
+    try {
+      window.sessionStorage.setItem(TOUR_SEEN_KEY, "1");
+    } catch {
+      /* ignore */
+    }
+
+    setTourActive(true);
+    setExploded(true);
+    const timeouts = [];
+    TOUR_ORDER.forEach((id, i) => {
+      timeouts.push(setTimeout(() => setSelected(id), 550 + i * 560));
+    });
+    timeouts.push(
+      setTimeout(() => {
+        setExploded(false);
+        setSelected("offer");
+        setTourActive(false);
+      }, 550 + TOUR_ORDER.length * 560 + 750)
+    );
+    tourTimeoutsRef.current = timeouts;
+
+    return () => {
+      timeouts.forEach(clearTimeout);
+      tourTimeoutsRef.current = [];
+    };
+    // Only re-evaluate on open — view changes mid-session shouldn't
+    // restart or interrupt an in-progress tour.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   return (
     <>
@@ -47,7 +118,7 @@ export default function WorkshopLab({ mode, onModeChange }) {
                 <p className="workshop-kicker">START-IT / MATERIAL LAB</p>
                 <h2>Build the business before the noise.</h2>
               </div>
-              <button className="workshop-lab-close" onClick={() => setOpen(false)} aria-label="Close lab"><X size={18} /></button>
+              <button className="workshop-lab-close" onClick={() => { stopTour(); setOpen(false); }} aria-label="Close lab"><X size={18} /></button>
             </header>
 
             <div className="workshop-lab-tabs" role="tablist">
@@ -56,7 +127,7 @@ export default function WorkshopLab({ mode, onModeChange }) {
                 ["blueprint", "Blueprint", DraftingCompass],
                 ["pencil", "Rough Notes", Pencil],
               ].map(([id, label, Icon]) => (
-                <button key={id} className={view === id ? "active" : ""} onClick={() => setView(id)} role="tab" aria-selected={view === id}>
+                <button key={id} className={view === id ? "active" : ""} onClick={() => { stopTour(); setView(id); }} role="tab" aria-selected={view === id}>
                   <Icon size={15} /> {label}
                 </button>
               ))}
@@ -65,7 +136,7 @@ export default function WorkshopLab({ mode, onModeChange }) {
             <div className="workshop-material-row">
               <span className="workshop-kicker">MATERIAL</span>
               {MATERIALS.map((item) => (
-                <button key={item.id} className={mode === item.id ? "active" : ""} onClick={() => onModeChange(item.id)}>
+                <button key={item.id} className={mode === item.id ? "active" : ""} onClick={() => { stopTour(); onModeChange(item.id); }}>
                   {item.label}<small>{item.note}</small>
                 </button>
               ))}
@@ -77,8 +148,11 @@ export default function WorkshopLab({ mode, onModeChange }) {
                   <div>
                     <span className="workshop-kicker">01 / SYSTEM MAP</span>
                     <h3>Your business, as a machine.</h3>
+                    {tourActive && (
+                      <p className="engine-tour-note"><Sparkles size={11} /> Guided preview — click any part to take over</p>
+                    )}
                   </div>
-                  <button className="engine-action" onClick={() => setExploded((value) => !value)}>
+                  <button className="engine-action" onClick={() => { stopTour(); setExploded((value) => !value); }}>
                     <Box size={14} /> {exploded ? "ASSEMBLE" : "EXPLODE THE SYSTEM"}
                   </button>
                 </div>
@@ -87,7 +161,8 @@ export default function WorkshopLab({ mode, onModeChange }) {
                   <ResponsiveBusinessEngine
                     material={material.id}
                     exploded={exploded}
-                    onPartSelect={(part) => setSelected(part.id)}
+                    selectedPartId={selected}
+                    onPartSelect={(part) => { stopTour(); setSelected(part.id); }}
                   />
                 </div>
 
@@ -97,7 +172,7 @@ export default function WorkshopLab({ mode, onModeChange }) {
                     <strong>{selectedNode.label}</strong>
                     <p>{selectedNode.detail}</p>
                   </div>
-                  <button onClick={() => setSelected("offer")}>RESET FOCUS <RotateCcw size={13} /></button>
+                  <button onClick={() => { stopTour(); setSelected("offer"); }}>RESET FOCUS <RotateCcw size={13} /></button>
                 </div>
               </section>
             )}
@@ -133,7 +208,7 @@ export default function WorkshopLab({ mode, onModeChange }) {
             <footer className="workshop-lab-footer">
               <span>{material.label.toUpperCase()} / {material.note.toUpperCase()}</span>
               <span>PHASE 04 · REAL 3D MATERIALS</span>
-              <button onClick={() => setOpen(false)}>RETURN TO WORKSHOP <ChevronRight size={13} /></button>
+              <button onClick={() => { stopTour(); setOpen(false); }}>RETURN TO WORKSHOP <ChevronRight size={13} /></button>
             </footer>
           </div>
         </div>

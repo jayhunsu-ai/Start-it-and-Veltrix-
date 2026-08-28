@@ -149,13 +149,13 @@ function addBolt(parent, x, y, z, scale = 1) {
   parent.add(bolt);
 }
 
-export default function MaterialEngine3D({ material = "denim", exploded = false, onPartSelect }) {
+export default function MaterialEngine3D({ material = "denim", exploded = false, selectedPartId = null, onPartSelect }) {
   const mountRef = useRef(null);
-  const stateRef = useRef({ exploded, material, onPartSelect });
+  const stateRef = useRef({ exploded, material, selectedPartId, onPartSelect });
 
   useEffect(() => {
-    stateRef.current = { exploded, material, onPartSelect };
-  }, [exploded, material, onPartSelect]);
+    stateRef.current = { exploded, material, selectedPartId, onPartSelect };
+  }, [exploded, material, selectedPartId, onPartSelect]);
 
   useEffect(() => {
     const mount = mountRef.current;
@@ -249,6 +249,11 @@ export default function MaterialEngine3D({ material = "denim", exploded = false,
     });
 
     const meshes = [];
+    // Selection halo: a soft gold "glow plate" sized just past each part's
+    // body, sitting behind it. Opacity/emissive are driven per-frame below
+    // so clicking (or the guided tour selecting) a part is actually visible
+    // in the scene itself, not just in the text panel underneath it.
+    const halos = [];
     PARTS.forEach((part, index) => {
       const group = new THREE.Group();
       group.userData.part = part;
@@ -264,6 +269,8 @@ export default function MaterialEngine3D({ material = "denim", exploded = false,
           metalness: MATERIALS.denim.metalness,
           clearcoat: 0.34,
           clearcoatRoughness: 0.48,
+          emissive: 0xc99a2e,
+          emissiveIntensity: 0,
         })
       );
       group.add(body);
@@ -287,6 +294,14 @@ export default function MaterialEngine3D({ material = "denim", exploded = false,
         new THREE.LineBasicMaterial({ color: MATERIALS.denim.edge, transparent: true, opacity: 0.68 })
       );
       group.add(trim);
+
+      const halo = new THREE.Mesh(
+        roundedPlate(2.06, 1.1, 0.02, 0.24),
+        new THREE.MeshBasicMaterial({ color: 0xe0b54c, transparent: true, opacity: 0, side: THREE.DoubleSide })
+      );
+      halo.position.z = -0.32;
+      group.add(halo);
+      halos.push(halo);
 
       addBolt(group, -0.63, 0.28, 0.24, 0.72);
       addBolt(group, 0.63, 0.28, 0.24, 0.72);
@@ -399,6 +414,26 @@ export default function MaterialEngine3D({ material = "denim", exploded = false,
         group.position.lerp(target, 0.085);
         group.position.z += Math.sin(t * 1.1 + i * 0.8) * 0.004;
         group.rotation.x = 0.07 + Math.sin(t * 0.65 + i) * 0.018;
+
+        // Selection feedback: the part currently chosen (by click or by
+        // the guided tour) gets a gently pulsing gold halo, a warm
+        // emissive glow on the body itself, and a small scale-up — so
+        // "selected" is something you can actually see on the model,
+        // not just read below it.
+        const isSelected = state.selectedPartId === part.id;
+        const pulse = 0.85 + Math.sin(t * 3.1 + i) * 0.15;
+        const targetScale = isSelected ? 1.07 : 1;
+        group.scale.x += (targetScale - group.scale.x) * 0.15;
+        group.scale.y += (targetScale - group.scale.y) * 0.15;
+        group.scale.z += (targetScale - group.scale.z) * 0.15;
+
+        const halo = halos[i];
+        const targetHaloOpacity = isSelected ? 0.5 * pulse : 0;
+        halo.material.opacity += (targetHaloOpacity - halo.material.opacity) * 0.14;
+
+        const body = group.children[0];
+        const targetEmissive = isSelected ? 0.32 * pulse : 0;
+        body.material.emissiveIntensity += (targetEmissive - body.material.emissiveIntensity) * 0.16;
       });
 
       connectors.forEach((line, i) => {

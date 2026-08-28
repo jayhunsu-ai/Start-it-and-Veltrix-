@@ -360,6 +360,53 @@
   font: 500 9px/1 "DM Mono", monospace; letter-spacing: .06em;
 }
 
+/* ---- Guided tour indicator ---- */
+.engine-tour-note {
+  margin: 8px 0 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px;
+  border: 1px solid rgba(201,154,46,.4);
+  border-radius: 999px;
+  background: rgba(201,154,46,.08);
+  color: #e0b54c;
+  font: 500 9px/1 "DM Mono", ui-monospace, monospace;
+  letter-spacing: .1em;
+  animation: bp-rise 400ms both;
+}
+
+/* ---- Blueprint / Pencil: one-time draw-in reveal, replays each time the
+   tab is opened since the section itself remounts on tab switch. ---- */
+@keyframes bp-rise { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes bp-draw-a { from { opacity: 0; transform: rotate(8deg) scaleX(0); } to { opacity: 1; transform: rotate(8deg) scaleX(1); } }
+@keyframes bp-draw-b { from { opacity: 0; transform: rotate(-12deg) scaleX(0); } to { opacity: 1; transform: rotate(-12deg) scaleX(1); } }
+@keyframes bp-draw-c { from { opacity: 0; transform: rotate(88deg) scaleX(0); } to { opacity: 1; transform: rotate(88deg) scaleX(1); } }
+
+.blueprint-title { animation: bp-rise 520ms cubic-bezier(.2,.7,.3,1) both; }
+.blueprint-stamp { animation: bp-rise 460ms 620ms cubic-bezier(.2,.7,.3,1) both; }
+.blueprint-line-a { animation: bp-draw-a 640ms 200ms cubic-bezier(.2,.7,.3,1) both; }
+.blueprint-line-b { animation: bp-draw-b 640ms 340ms cubic-bezier(.2,.7,.3,1) both; }
+.blueprint-line-c { animation: bp-draw-c 640ms 480ms cubic-bezier(.2,.7,.3,1) both; }
+.blueprint-note { animation: bp-rise 480ms cubic-bezier(.2,.7,.3,1) both; }
+.note-a { animation-delay: 560ms; }
+.note-b { animation-delay: 700ms; }
+.note-c { animation-delay: 840ms; }
+.blueprint-dimension { animation: bp-rise 460ms 960ms cubic-bezier(.2,.7,.3,1) both; }
+
+@keyframes pencil-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes pencil-rise-neg1 { from { opacity: 0; transform: translateY(8px) rotate(-1deg); } to { opacity: 1; transform: translateY(0) rotate(-1deg); } }
+@keyframes pencil-rise-neg2 { from { opacity: 0; transform: translateY(8px) rotate(-2deg); } to { opacity: 1; transform: translateY(0) rotate(-2deg); } }
+@keyframes pencil-rise-pos { from { opacity: 0; transform: translateY(8px) rotate(.8deg); } to { opacity: 1; transform: translateY(0) rotate(.8deg); } }
+
+.pencil-margin { animation: pencil-rise 420ms cubic-bezier(.2,.7,.3,1) both; }
+.pencil-paper h3 { animation: pencil-rise 520ms 120ms cubic-bezier(.2,.7,.3,1) both; }
+.pencil-strike { animation: pencil-rise 420ms 320ms cubic-bezier(.2,.7,.3,1) both; }
+.pencil-correction { animation: pencil-rise-neg1 480ms 480ms cubic-bezier(.2,.7,.3,1) both; }
+.pencil-arrow { animation: pencil-rise-neg2 460ms 660ms cubic-bezier(.2,.7,.3,1) both; }
+.pencil-box { animation: pencil-rise-pos 480ms 800ms cubic-bezier(.2,.7,.3,1) both; }
+.pencil-caption { animation: pencil-rise 420ms 940ms cubic-bezier(.2,.7,.3,1) both; }
+
 .workshop-lab-footer {
   display: flex; align-items: center; gap: 18px; margin-top: 15px;
   color: rgba(241,234,217,.34);
@@ -407,4 +454,8 @@
 @media (prefers-reduced-motion: reduce) {
   .workshop-lab-backdrop, .engine-wires path { animation: none; }
   .engine-node { transition: none; }
+  .blueprint-title, .blueprint-stamp, .blueprint-line-a, .blueprint-line-b, .blueprint-line-c,
+  .blueprint-note, .blueprint-dimension,
+  .pencil-margin, .pencil-paper h3, .pencil-strike, .pencil-correction, .pencil-arrow, .pencil-box, .pencil-caption,
+  .engine-tour-note { animation: none; }
 }

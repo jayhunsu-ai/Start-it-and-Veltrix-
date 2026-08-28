@@ -31,13 +31,18 @@ function useMobileLite() {
 export default function ResponsiveBusinessEngine({
   material = "denim",
   exploded = false,
+  selectedPartId = null,
   onPartSelect,
 }) {
   const lite = useMobileLite();
-  const [selected, setSelected] = useState("offer");
+  // Falls back to internal tracking only if the caller doesn't pass a
+  // controlled selectedPartId — WorkshopLab always does, so this is
+  // mainly a safety net for any other future caller of this component.
+  const [internalSelected, setInternalSelected] = useState("offer");
+  const selected = selectedPartId ?? internalSelected;
 
   const select = (id) => {
-    setSelected(id);
+    setInternalSelected(id);
     const part = PARTS.find(([key]) => key === id);
     if (part) onPartSelect?.({ id: part[0], label: part[1], note: part[2] });
   };
@@ -48,8 +53,9 @@ export default function ResponsiveBusinessEngine({
         <MaterialEngine3D
           material={material}
           exploded={exploded}
+          selectedPartId={selected}
           onPartSelect={(part) => {
-            setSelected(part.id);
+            setInternalSelected(part.id);
             onPartSelect?.(part);
           }}
         />
