@@ -4,7 +4,7 @@ on:
   schedule:
     # Runs every 14 minutes (GitHub cron is UTC, best-effort timing)
     - cron: '*/14 * * * *'
-  workflow_dispatch: {}  # lets you trigger it manually from the Actions tab
+  workflow_dispatch: {}
 
 jobs:
   ping:
@@ -13,11 +13,39 @@ jobs:
       - name: Ping health endpoint
         run: |
           URL="https://start-it-demo.onrender.com/api/health"
-          timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          status=$(curl -s -o /tmp/body -w "%{http_code}" --max-time 20 "$URL")
-          body=$(cat /tmp/body)
-          echo "[$timestamp] Status: $status"
-          echo "Response: $body"
-          if [ "$status" != "200" ]; then
-            echo "::warning::Health check failed with status $status"
-          fi
+
+          for attempt in 1 2 3; do
+            timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+            echo "Health check attempt $attempt..."
+
+            if response=$(curl -sS \
+              --connect-timeout 10 \
+              --max-time 60 \
+              -w "\\n%{http_code}" \
+              "$URL"); then
+
+              status=$(echo "$response" | tail -n1)
+              body=$(echo "$response" | sed '$d')
+
+              echo "[$timestamp] Status: $status"
+              echo "Response: $body"
+
+              if [ "$status" = "200" ]; then
+                echo "Health check passed."
+                exit 0
+              fi
+
+              echo "::warning::Health endpoint returned HTTP $status."
+            else
+              echo "::warning::Health check attempt $attempt timed out or failed."
+            fi
+
+            if [ "$attempt" -lt 3 ]; then
+              echo "Retrying in 10 seconds..."
+              sleep 10
+            fi
+          done
+
+          echo "::warning::Render health endpoint did not respond successfully after 3 attempts."
+          # Keep the scheduled keepalive job from becoming a failing alarm.
+          exit 0
